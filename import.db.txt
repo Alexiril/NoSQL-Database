@@ -1,0 +1,19 @@
+127.0.0.1
+1111
+clear
+set Alex,Astrid
+set Alex love,age,mood,hobbies,country,languages
+set Alex love Astrid,MyLittlePony
+set Alex age 19
+set Alex mood nice
+set Alex hobbies music,animation,drawing,graphics
+set Alex country Canada
+set Alex languages English,Norwegian,Russian
+set Astrid love,age,mood,hobbies,country,languages
+set Astrid love Alex,MyLittlePony
+set Astrid age 19
+set Astrid mood awesome
+set Astrid hobbies don't_know
+set Astrid country Norway
+set Astrid languages English,Norwegian
+exit
