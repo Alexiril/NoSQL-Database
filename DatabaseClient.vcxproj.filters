@@ -21,7 +21,7 @@
     <ClCompile Include="ThreadPool.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="ClientTCP.cpp">
+    <ClCompile Include="Client.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -32,7 +32,7 @@
     <ClInclude Include="Sockets.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="ClientTCP.hpp">
+    <ClInclude Include="Client.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="ThreadPool.hpp">

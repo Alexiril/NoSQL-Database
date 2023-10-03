@@ -27,6 +27,7 @@
 
 using string = std::string;
 using mutex = std::mutex;
+using rmutex = std::recursive_mutex;
 using sstream = std::stringstream;
 
 using u8 = uint8_t;
@@ -42,56 +43,56 @@ using i64 = int64_t;
 namespace StringExtension
 {
 
-    inline void LeftTrim(string &s)
-    {
-        s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](unsigned char ch)
-                                        { return !std::isspace(ch); }));
-    }
+	inline void LeftTrim(string& s)
+	{
+		s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](unsigned char ch)
+			{ return !std::isspace(ch); }));
+	}
 
-    inline void RightTrim(string &s)
-    {
-        s.erase(std::find_if(s.rbegin(), s.rend(), [](unsigned char ch)
-                             { return !std::isspace(ch); })
-                    .base(),
-                s.end());
-    }
+	inline void RightTrim(string& s)
+	{
+		s.erase(std::find_if(s.rbegin(), s.rend(), [](unsigned char ch)
+			{ return !std::isspace(ch); })
+			.base(),
+			s.end());
+	}
 
-    inline void Trim(string &s)
-    {
-        RightTrim(s);
-        LeftTrim(s);
-    }
+	inline void Trim(string& s)
+	{
+		RightTrim(s);
+		LeftTrim(s);
+	}
 
-    inline void ToLower(string &s)
-    {
-        std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c)
-                       { return std::tolower(c); });
-    }
+	inline void ToLower(string& s)
+	{
+		std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c)
+			{ return std::tolower(c); });
+	}
 
-    inline const std::vector<string> Split(string& s, string separator)
-    {
-        auto arguments = std::vector<string>();
-        u64 startIndex = 0;
-        u64 separatorPosition = s.find(separator, startIndex);
-        while (separatorPosition != string::npos)
-        {
-            arguments.push_back(s.substr(startIndex, separatorPosition - startIndex));
-            startIndex = separatorPosition + 1;
-            separatorPosition = s.find(separator, startIndex);
-        }
-        arguments.push_back(s.substr(startIndex));
-        return arguments;
-    }
+	inline const std::vector<string> Split(const string& s, const string& separator)
+	{
+		auto arguments = std::vector<string>();
+		u64 startIndex = 0;
+		u64 separatorPosition = s.find(separator, startIndex);
+		while (separatorPosition != string::npos)
+		{
+			arguments.push_back(s.substr(startIndex, separatorPosition - startIndex));
+			startIndex = separatorPosition + 1;
+			separatorPosition = s.find(separator, startIndex);
+		}
+		arguments.push_back(s.substr(startIndex));
+		return arguments;
+	}
 
-    inline const std::vector<string> SplitStd(string& s)
-    {
-        auto arguments = std::vector<string>();
-        string word;
-        sstream buffer(s);
-        while (buffer >> word)
-            arguments.push_back(word);
-        return arguments;
-    }
+	inline std::vector<string> SplitStd(const string& s)
+	{
+		auto arguments = std::vector<string>();
+		string word;
+		sstream buffer(s);
+		while (buffer >> word)
+			arguments.push_back(word);
+		return arguments;
+	}
 }
 
 #endif // !SHARED_HPP

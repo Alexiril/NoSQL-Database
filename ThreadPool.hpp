@@ -7,27 +7,26 @@
 #include <condition_variable>
 
 class ThreadPool {
-	std::vector<std::jthread> _threads;
-	std::queue<std::function<void()>> _jobs;
-	mutex _jobsMutex;
-	std::condition_variable _condition;
-	std::atomic<bool> _threadsTerminated = false;
+	std::atomic_bool halt_ = false;
+	std::vector<std::jthread> thread;
+	std::queue<std::function<void()>> jobs_;
+	mutex job_mutex_;
+	std::condition_variable condition_;
 
-	void setupThreadPool(u64 threadCount);
+	void setupThreadPool(u64 thread_count);
 	void workerLoop();
 
 public:
-	ThreadPool(u64 threadCount = std::thread::hardware_concurrency());
+	ThreadPool(u64 thread_count = std::thread::hardware_concurrency());
 	~ThreadPool();
 
 	template<typename F>
 	void addJob(F job)
 	{
-		if (_threadsTerminated) return;
-
-		std::unique_lock lock(_jobsMutex);
-		_jobs.push(std::function<void()>(job));
-		_condition.notify_one();
+		if (halt_) return;
+		std::unique_lock lock(job_mutex_);
+		jobs_.push(std::function<void()>(job));
+		condition_.notify_one();
 	}
 
 	template<typename F, typename... Arg>
@@ -41,8 +40,8 @@ public:
 	u64 getThreadCount() const;
 	void dropUnstartedJobs();
 
-	void stop();
-	void start(u64 threadCount = std::thread::hardware_concurrency());
+	void halt();
+	void start(u64 thread_count = std::thread::hardware_concurrency());
 
 };
 

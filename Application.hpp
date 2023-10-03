@@ -4,7 +4,7 @@
 
 #include "Shared.hpp"
 #include "Object.hpp"
-#include "ServerTCP.hpp"
+#include "Server.hpp"
 
 class Application
 {
@@ -13,14 +13,13 @@ public:
     ~Application();
 
     void Run();
-    void RunConsole();
 
 private:
-    std::shared_ptr<Database::Object> _root;
-    std::unique_ptr<SocketTCP::TcpServer> _server;
-    std::jthread _serverThread;
+    std::shared_ptr<Database::Object> root_;
+    std::unique_ptr<SocketTCP::Server::Server> server_;
+    std::jthread serverThread_;
 
-    bool HandleConsole(string request);
+    bool HandleConsole(string& request);
 };
 
 #endif // !APPLICATION_HPP

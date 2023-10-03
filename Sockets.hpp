@@ -108,29 +108,35 @@ namespace SocketTCP {
 	using SockLen_t = i32;
 	using SocketAddr_in = SOCKADDR_IN;
 	using Socket = SOCKET;
-	using ka_prop_t = u64;
+	using KaPropertyType = u64;
 #else
 	using SockLen_t = socklen_t;
 	using SocketAddr_in = struct sockaddr_in;
 	using Socket = i32;
-	using ka_prop_t = i32;
+	using KaPropertyType = i32;
 #endif
 
-	constexpr u32 LoopBack = 0x0100007f;
+	constexpr u32 kLoopBack = 0x0100007f;
 
-	enum class SocketStatus : u8 {
-		connected = 0,
-		err_socket_init = 1,
-		err_socket_bind = 2,
-		err_socket_connect = 3,
-		disconnected = 4
+	enum class ClientSocketStatus : u8 {
+		kConnected,
+		kErrSocketInit,
+		kErrSocketBind,
+		kErrSocketConnect,
+		kDisconnected
+	};
+
+	enum class RecvResult {
+		kOk,
+		kAgain,
+		kDisconnect
 	};
 
 	typedef std::vector<u8> DataBuffer;
 
 	enum class SocketType : u8 {
-		_socket = 0,
-		server_socket = 1
+		kClientSocket = 0,
+		kServerSocket = 1
 	};
 
 #ifdef _WIN32
@@ -155,28 +161,16 @@ namespace SocketTCP {
 	}
 #endif
 
-	class ClientTCPBase {
-	public:
-		virtual ~ClientTCPBase() {};
-		virtual SocketStatus disconnect() = 0;
-		virtual SocketStatus getStatus() const = 0;
-		virtual bool sendData(const char* buffer, const u64 size) const = 0;
-		virtual DataBuffer loadData() = 0;
-		virtual uint32_t getHost() const = 0;
-		virtual uint16_t getPort() const = 0;
-		virtual SocketType getType() const = 0;
-	};
-
 	inline string U32ToIpAddress(u32 ip)
 	{
 		if (ip == 0)
 			return "0.0.0.0 (any)";
 		sstream result;
 		result
-			<< std::to_string(i32(reinterpret_cast<char*>(&ip)[0])) << '.'
-			<< std::to_string(i32(reinterpret_cast<char*>(&ip)[1])) << '.'
-			<< std::to_string(i32(reinterpret_cast<char*>(&ip)[2])) << '.'
-			<< std::to_string(i32(reinterpret_cast<char*>(&ip)[3]));
+			<< i32{ reinterpret_cast<char*>(&ip)[0] } << '.'
+			<< i32{ reinterpret_cast<char*>(&ip)[1] } << '.'
+			<< i32{ reinterpret_cast<char*>(&ip)[2] } << '.'
+			<< i32{ reinterpret_cast<char*>(&ip)[3] };
 		return result.str();
 	}
 }

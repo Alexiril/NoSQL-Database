@@ -21,13 +21,10 @@
     <ClCompile Include="Application.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="ServerTCP.cpp">
+    <ClCompile Include="Server.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="ThreadPool.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="RequestState.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Object.cpp">
@@ -38,7 +35,7 @@
     <ClInclude Include="Application.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="ServerTCP.hpp">
+    <ClInclude Include="Server.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Shared.hpp">

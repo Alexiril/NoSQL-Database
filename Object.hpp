@@ -11,30 +11,30 @@ namespace Database
     {
 
     private:
-        void Clear(bool locked);
-        string Get(bool locked);
-        string Tree(u64 depth, bool locked);
-        string Export(string parent, bool locked);
+        void Clear();
+        string Get();
+        string Tree(u64 depth);
+        string ExportBranch(const string& parent);
         void Wait();
 
     protected:
         using requestOperationType = std::function<RequestStateObject(string value)>;
 
         std::map<string, std::tuple<requestOperationType, string>> operations();
+        
+        std::condition_variable_any waiting_;
+        std::atomic<u64>            anchors_ = 0;
+        rmutex			            access_mutex_;
+        rmutex					    waiting_mutex_;
 
-        std::atomic<u64>        anchors = 0;
-        mutex			        accessMutex;
-        mutex					waitingMutex;
-        std::condition_variable waiting;
+        string name_ = "";
 
-        string name = "";
+        std::map<string, std::shared_ptr<Object>> children_{};
+        std::weak_ptr<Object> parent_;
+        std::weak_ptr<Object> this_ptr_;
 
-        std::map<string, std::shared_ptr<Object>> children{};
-        std::weak_ptr<Object> parent;
-        std::weak_ptr<Object> this_ptr;
-
-        RequestStateObject HandleSelector(string function, std::vector<string> selector);
-        RequestStateObject HandleComma(string function, const std::vector<string> commaObjects);
+        RequestStateObject HandleSelector(string& function, std::vector<string>& selector);
+        RequestStateObject HandleComma(string& function, const std::vector<string>& commaObjects);
 
         RequestStateObject Set(string name);
         RequestStateObject Get(string name);
@@ -48,9 +48,9 @@ namespace Database
         Object(string name);
         ~Object();
 
-        RequestStateObject HandleRequest(string request);
+        RequestStateObject HandleRequest(string& request);
         
-        bool ContainsCommand(string command);
+        bool ContainsCommand(const string& command);
 
         void SetThisPtr(std::weak_ptr<Object> this_ptr);
     };

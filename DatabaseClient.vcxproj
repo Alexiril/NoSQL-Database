@@ -135,11 +135,11 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="ApplicationClient.cpp" />
-    <ClCompile Include="ClientTCP.cpp" />
+    <ClCompile Include="Client.cpp" />
     <ClCompile Include="ThreadPool.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="ClientTCP.hpp" />
+    <ClInclude Include="Client.hpp" />
     <ClInclude Include="Shared.hpp" />
     <ClInclude Include="Sockets.hpp" />
     <ClInclude Include="ThreadPool.hpp" />

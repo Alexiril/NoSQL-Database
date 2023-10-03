@@ -1,25 +1,25 @@
 #include "ThreadPool.hpp"
 
-void ThreadPool::setupThreadPool(u64 threadCount)
+void ThreadPool::setupThreadPool(u64 thread_count)
 {
-	_threads.clear();
-	for (u64 i = 0; i < threadCount; ++i)
-		_threads.emplace_back(&ThreadPool::workerLoop, this);
+	thread.clear();
+	for (u64 i = 0; i < thread_count; ++i)
+		thread.push_back(std::jthread([&]() { workerLoop(); }));
 }
 
 void ThreadPool::workerLoop()
 {
 	std::function<void()> job;
-	while (!_threadsTerminated) {
+	while (not halt_) {
 		{
-			std::unique_lock lock(_jobsMutex);
-			_condition.wait(lock, [this]()
+			std::unique_lock lock(job_mutex_);
+			condition_.wait(lock, [this]()
 				{
-					return !_jobs.empty() || _threadsTerminated;
+					return not jobs_.empty() or halt_;
 				});
-			if (_threadsTerminated) return;
-			job = _jobs.front();
-			_jobs.pop();
+			if (halt_) return;
+			job = jobs_.front();
+			jobs_.pop();
 		}
 		job();
 	}
@@ -32,43 +32,41 @@ ThreadPool::ThreadPool(u64 threadCount)
 
 ThreadPool::~ThreadPool()
 {
-	_threadsTerminated = true;
-	join();
+	halt();
 }
 
 void ThreadPool::join()
 {
-	for (auto& thread : _threads)
-	{
-		_condition.notify_all();
-		thread.join();
-	}
+	for (auto& thread : thread)
+		if (thread.joinable())
+		{
+			condition_.notify_all();
+			thread.join();
+		}
 }
 
 u64 ThreadPool::getThreadCount() const
 {
-	return _threads.size();
+	return thread.size();
 }
 
 void ThreadPool::dropUnstartedJobs()
 {
-	_threadsTerminated = true;
 	join();
 	std::queue<std::function<void()>> empty;
-	std::swap(_jobs, empty);
-	_threadsTerminated = false;
-	setupThreadPool(_threads.size());
+	std::swap(jobs_, empty);
+	setupThreadPool(thread.size());
 }
 
-void ThreadPool::stop()
+void ThreadPool::halt()
 {
-	_threadsTerminated = true;
-	join();
+	halt_ = true;
+	condition_.notify_all();
+	for (auto& thread : thread)
+		thread.request_stop();
 }
 
 void ThreadPool::start(u64 threadCount)
 {
-	if (!_threadsTerminated) return;
-	_threadsTerminated = false;
 	setupThreadPool(threadCount);
 }
