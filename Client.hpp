@@ -3,7 +3,6 @@
 #define CLIENT_HPP
 
 #include "Sockets.hpp"
-#include "ThreadPool.hpp"
 
 namespace SocketTCP
 {
@@ -15,7 +14,7 @@ namespace SocketTCP
             Socket socket_;
 
             mutex handle_mutex_;
-            std::function<void(DataBuffer)> _handler = [](DataBuffer) {};
+            std::function<void(DataBuffer)> handler_;
 
             std::jthread thread;
 
@@ -37,9 +36,7 @@ namespace SocketTCP
             u16 getPort() const;
             ClientSocketStatus getStatus() const { return status_; }
 
-            RecvResult checkRecv(i32 answer);
             DataBuffer loadData();
-            DataBuffer loadDataSync();
             void setHandler(HandlerFunctionType handler);
             void joinHandler();
 

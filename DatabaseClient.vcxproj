@@ -136,13 +136,12 @@
   <ItemGroup>
     <ClCompile Include="ApplicationClient.cpp" />
     <ClCompile Include="Client.cpp" />
-    <ClCompile Include="ThreadPool.cpp" />
+    <ClCompile Include="Sockets.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Client.hpp" />
     <ClInclude Include="Shared.hpp" />
     <ClInclude Include="Sockets.hpp" />
-    <ClInclude Include="ThreadPool.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

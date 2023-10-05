@@ -1,13 +1,13 @@
 #include "ThreadPool.hpp"
 
-void ThreadPool::setupThreadPool(u64 thread_count)
+void ThreadPool::ThreadPool::setupThreadPool(u64 thread_count)
 {
-	thread.clear();
+	threads_.clear();
 	for (u64 i = 0; i < thread_count; ++i)
-		thread.push_back(std::jthread([&]() { workerLoop(); }));
+		threads_.push_back(std::jthread([&]() { workerLoop(); }));
 }
 
-void ThreadPool::workerLoop()
+void ThreadPool::ThreadPool::workerLoop()
 {
 	std::function<void()> job;
 	while (not halt_) {
@@ -25,48 +25,51 @@ void ThreadPool::workerLoop()
 	}
 }
 
-ThreadPool::ThreadPool(u64 threadCount)
+ThreadPool::ThreadPool::ThreadPool(u64 threadCount)
 {
 	setupThreadPool(threadCount);
 }
 
-ThreadPool::~ThreadPool()
+ThreadPool::ThreadPool::~ThreadPool()
 {
 	halt();
+	join();
 }
 
-void ThreadPool::join()
+void ThreadPool::ThreadPool::join()
 {
-	for (auto& thread : thread)
+	for (auto& thread : threads_)
 		if (thread.joinable())
 		{
 			condition_.notify_all();
 			thread.join();
 		}
+	threads_.clear();
 }
 
-u64 ThreadPool::getThreadCount() const
+u64 ThreadPool::ThreadPool::getThreadCount() const
 {
-	return thread.size();
+	return threads_.size();
 }
 
-void ThreadPool::dropUnstartedJobs()
+void ThreadPool::ThreadPool::dropUnstartedJobs()
 {
+	halt();
 	join();
 	std::queue<std::function<void()>> empty;
 	std::swap(jobs_, empty);
-	setupThreadPool(thread.size());
+	setupThreadPool(threads_.size());
 }
 
-void ThreadPool::halt()
+void ThreadPool::ThreadPool::halt()
 {
 	halt_ = true;
 	condition_.notify_all();
-	for (auto& thread : thread)
+	for (auto& thread : threads_)
 		thread.request_stop();
 }
 
-void ThreadPool::start(u64 threadCount)
+void ThreadPool::ThreadPool::start(u64 threadCount)
 {
 	setupThreadPool(threadCount);
 }

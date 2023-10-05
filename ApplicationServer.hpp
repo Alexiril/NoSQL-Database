@@ -6,11 +6,11 @@
 #include "Object.hpp"
 #include "Server.hpp"
 
-class Application
+class ApplicationServer
 {
 public:
-    Application();
-    ~Application();
+    ApplicationServer();
+    ~ApplicationServer();
 
     void Run();
 

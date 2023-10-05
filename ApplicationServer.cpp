@@ -1,17 +1,23 @@
-#include "Application.hpp"
+#include "ApplicationServer.hpp"
 
-Application::Application()
+i32 main()
+{
+    ApplicationServer().Run();
+    return 0;
+}
+
+ApplicationServer::ApplicationServer()
 {
     root_.reset(new Database::Object("database"));
     root_->SetThisPtr(root_);
 }
 
-Application::~Application()
+ApplicationServer::~ApplicationServer()
 {
     root_.reset();
 }
 
-void Application::Run()
+void ApplicationServer::Run()
 {
     u32 ip_address_{ INADDR_ANY };
     u16 port_{ 1111 };
@@ -168,10 +174,10 @@ void Application::Run()
     std::cout << "\033[93mHalting...\033[0m" << std::endl;
 
     server_->halt();
-    serverThread_.join();
+    exit(0);
 }
 
-bool Application::HandleConsole(string& command)
+bool ApplicationServer::HandleConsole(string& command)
 {
     StringExtension::Trim(command);
     string serverCommand = command;

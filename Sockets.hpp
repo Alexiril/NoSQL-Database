@@ -9,6 +9,8 @@
 #include <winsock.h>
 #include <Ws2tcpip.h>
 #include <mstcpip.h>
+#define WIN(exp) exp
+#define NIX(exp)
 #else
 #define SD_BOTH 0
 #include <sys/socket.h>
@@ -18,15 +20,14 @@
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <fcntl.h>
+#define WIN(exp)
+#define NIX(exp) exp
 #endif
 
 namespace SocketTCP {
 
 #ifdef _WIN32
-#define WIN(exp) exp
-#define NIX(exp)
-	inline i32 convertError()
-	{
+	inline i32 ConvertError() {
 		i32 lastError = WSAGetLastError();
 		switch (lastError) {
 		case 0:
@@ -99,12 +100,28 @@ namespace SocketTCP {
 			return EIO;
 		}
 	}
-#else
-#define WIN(exp)
-#define NIX(exp) exp
-#endif
 
-#ifdef _WIN32
+	class WinSocketInit {
+	public:
+
+		WSAData _wData;
+
+		WinSocketInit() {
+			CheckWSAStartup(WSAStartup(MAKEWORD(2, 2), &_wData));
+		}
+
+		~WinSocketInit() {
+			WSACleanup();
+		}
+
+		static void CheckWSAStartup(i32 result) {
+			if (result != 0)
+				throw std::runtime_error(std::format("WSAStartup error #{}", result));
+		}
+	};
+
+	static inline WinSocketInit kWinsockInit;
+
 	using SockLen_t = i32;
 	using SocketAddr_in = SOCKADDR_IN;
 	using Socket = SOCKET;
@@ -115,9 +132,9 @@ namespace SocketTCP {
 	using Socket = i32;
 	using KaPropertyType = i32;
 #endif
-
-	constexpr u32 kLoopBack = 0x0100007f;
-
+	
+	using DataBuffer = std::vector<u8>;
+	
 	enum class ClientSocketStatus : u8 {
 		kConnected,
 		kErrSocketInit,
@@ -132,34 +149,10 @@ namespace SocketTCP {
 		kDisconnect
 	};
 
-	typedef std::vector<u8> DataBuffer;
-
 	enum class SocketType : u8 {
 		kClientSocket = 0,
 		kServerSocket = 1
 	};
-
-#ifdef _WIN32
-	namespace WinInit {
-		class _WinSocketInit {
-		public:
-			
-			WSAData _wData;
-
-			_WinSocketInit() {
-				i32 result = WSAStartup(MAKEWORD(2, 2), &_wData);
-				if (result != 0)
-					throw std::runtime_error(std::format("WSAStartup error #{}", result));
-			}
-
-			~_WinSocketInit() {
-				WSACleanup();
-			}
-		};
-		
-		static inline _WinSocketInit _winsockInit;
-	}
-#endif
 
 	inline string U32ToIpAddress(u32 ip)
 	{
@@ -167,12 +160,58 @@ namespace SocketTCP {
 			return "0.0.0.0 (any)";
 		sstream result;
 		result
-			<< i32{ reinterpret_cast<char*>(&ip)[0] } << '.'
-			<< i32{ reinterpret_cast<char*>(&ip)[1] } << '.'
-			<< i32{ reinterpret_cast<char*>(&ip)[2] } << '.'
-			<< i32{ reinterpret_cast<char*>(&ip)[3] };
+			<< u32{ static_cast<u8>(reinterpret_cast<char*>(&ip)[0]) } << '.'
+			<< u32{ static_cast<u8>(reinterpret_cast<char*>(&ip)[1]) } << '.'
+			<< u32{ static_cast<u8>(reinterpret_cast<char*>(&ip)[2]) } << '.'
+			<< u32{ static_cast<u8>(reinterpret_cast<char*>(&ip)[3]) };
 		return result.str();
 	}
+
+	class ISocketCalls {
+	public:
+		virtual ~ISocketCalls() = default;
+		virtual Socket NewSocket(i32 af, i32 type, i32 proto) = 0;
+		virtual i32 SetSockOptions(Socket s, i32 level, i32 opname, char* optval, u32 optsize) = 0;
+		virtual i32 Connect(Socket s, SocketAddr_in& address) = 0;
+		virtual i32 Close(Socket s) = 0;
+		virtual i32 Shutdown(Socket s, i32 how) = 0;
+		virtual RecvResult Recv(Socket s, DataBuffer* data, u64 bytesToRead, i32 flags) = 0;
+		virtual RecvResult CheckRecv(Socket s, i32 answer) = 0;
+		virtual i32 Send(Socket s, DataBuffer& data, i32 flags) = 0;
+		virtual i32 Bind(Socket s, SocketAddr_in& address) = 0;
+		virtual i32 Listen(Socket s, i32 backlog) = 0;
+		virtual i32 SelectBeforeAccept(Socket s, fd_set* readfds, const timeval* timeout) = 0;
+		virtual Socket Accept(Socket s, SocketAddr_in& addr) = 0;
+
+#ifdef _WIN32
+		virtual i32 wsaioctl(Socket s, u32 dwIoControlCode,
+			void* lpvInBuffer, u32 cbInBuffer, void* lpvOutBuffer,
+			u32 cbOutBuffer, u32* lpcbBytesReturned, OVERLAPPED* lpOverlapped,
+			LPWSAOVERLAPPED_COMPLETION_ROUTINE lpCompletionRoutine) = 0;
+#endif
+	};
+
+	class SocketCalls : public ISocketCalls {
+	public:
+		Socket NewSocket(i32 af, i32 type, i32 proto);
+		i32 SetSockOptions(Socket s, i32 level, i32 opname, char * optval, u32 optsize);
+		i32 Connect(Socket s, SocketAddr_in& address);
+		i32 Close(Socket s);
+		i32 Shutdown(Socket s, i32 how);
+		RecvResult Recv(Socket s, DataBuffer* data, u64 bytesToRead, i32 flags);
+		RecvResult CheckRecv(Socket s, i32 answer);
+		i32 Send(Socket s, DataBuffer& data, i32 flags);
+		i32 Bind(Socket s, SocketAddr_in& address);
+		i32 Listen(Socket s, i32 backlog);
+		i32 SelectBeforeAccept(Socket s, fd_set* readfds, const timeval* timeout);
+		Socket Accept(Socket s, SocketAddr_in& addr);
+
+#ifdef _WIN32
+		i32 wsaioctl(Socket s, u32 dwIoControlCode, void* lpvInBuffer, u32 cbInBuffer, void* lpvOutBuffer, u32 cbOutBuffer, u32* lpcbBytesReturned, OVERLAPPED* lpOverlapped, LPWSAOVERLAPPED_COMPLETION_ROUTINE lpCompletionRoutine);
+#endif
+	};
+
+	static ISocketCalls* sockets = new SocketCalls();
 }
 
 #endif // !SOCKETS_HPP

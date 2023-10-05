@@ -46,7 +46,7 @@ namespace SocketTCP
             ConnectionHandlerFunctionType disconnect_handler_ = default_connection_handler_;
 
             bool halts_ = false;
-            ThreadPool thread;
+            ThreadPool::ThreadPool thread;
             KeepAliveConfig ka_config;
             std::list<std::unique_ptr<Client>> clients_;
             mutex client_work_mutex_;
@@ -68,7 +68,7 @@ namespace SocketTCP
 
             void setHandler(HandlerFunctionType handler);
 
-            ThreadPool& getThreadPool() { return thread; }
+            ThreadPool::ThreadPool& getThreadPool() { return thread; }
 
             u16 getPort() const;
             u16 setPort(const u16 port);
@@ -110,7 +110,6 @@ namespace SocketTCP
             ClientSocketStatus disconnect();
 
             DataBuffer loadData();
-            RecvResult checkRecv(i32 answer);
             bool sendData(const string& data) const;
             SocketType getType() const { return SocketType::kServerSocket; }
         };
