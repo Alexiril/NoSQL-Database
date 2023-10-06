@@ -78,6 +78,10 @@ namespace SocketTCP {
 		calls.Close(socket);
 	}
 
+	TEST_F(SocketCallsTest, IOctlSocket) {
+		ASSERT_NE(calls.IOctlSocket(0, 0, 0), 0);
+	}
+
 #endif
 
 	TEST(U32ToIpAddress, StandardUsing) {

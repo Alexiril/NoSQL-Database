@@ -21,6 +21,9 @@
     <ClCompile Include="requeststateTest.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="serverTest.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

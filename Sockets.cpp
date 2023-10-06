@@ -49,6 +49,11 @@ i32 SocketTCP::SocketCalls::wsaioctl(Socket s, u32 dwIoControlCode, void* lpvInB
 	return WSAIoctl(s, dwIoControlCode, lpvInBuffer, cbInBuffer, lpvOutBuffer, cbOutBuffer, reinterpret_cast<u_long*>(lpcbBytesReturned), lpOverlapped, lpCompletionRoutine);
 }
 
+i32 SocketTCP::SocketCalls::IOctlSocket(Socket s, i32 cmd, u32* argp)
+{
+	return ioctlsocket(s, cmd, reinterpret_cast<u_long*>(argp));
+}
+
 #endif
 
 Socket SocketTCP::SocketCalls::Accept(Socket s, SocketAddr_in& addr)

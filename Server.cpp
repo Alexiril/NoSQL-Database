@@ -141,7 +141,6 @@ u32 Server::Server::setIpAddress(const u32 ip_address)
 
 Server::Server::Status Server::Server::start()
 {
-	i32 flag = true;
 	if (status_ == Status::kUp)
 		stop();
 
@@ -158,31 +157,25 @@ Server::Server::Status Server::Server::start()
 #ifdef _WIN32
 	u32 timeout = timeout_ * 1000;
 	sockets->SetSockOptions(socket_, SOL_SOCKET, SO_RCVTIMEO, reinterpret_cast<char*>(&timeout), sizeof(timeout));
+
+	if (u32 mode = 0; sockets->IOctlSocket(socket_, FIONBIO, &mode) == SOCKET_ERROR)
+		return status_ = Status::kErrSocketInit;
 #else
-	struct timeval tv
-	{
-		timeout_, 0
-	};
+	struct timeval tv { timeout_, 0 };
 	sockets->SetSockOptions(socket_, SOL_SOCKET, SO_RCVTIMEO, reinterpret_cast<char *>(&tv), sizeof(tv));
 #endif
 
-	WIN(
-		if (u_long mode = 0; ioctlsocket(socket_, FIONBIO, &mode) == SOCKET_ERROR) {
-			return status_ = Status::kErrSocketInit;
-		})
-
-	if ((sockets->SetSockOptions(socket_, SOL_SOCKET, SO_REUSEADDR, WIN(reinterpret_cast<char *>)(&flag), sizeof(flag)) == -1) ||
-		(sockets->Bind(socket_, address_) WIN(== SOCKET_ERROR) NIX(< 0)))
+	i32 flag = true;
+	if ((sockets->SetSockOptions(socket_, SOL_SOCKET, SO_REUSEADDR, WIN(reinterpret_cast<char *>)(&flag), sizeof(flag)) == -1) or
+		(sockets->Bind(socket_, address_) < 0))
 		return status_ = Status::kErrSocketBind;
 
-	if (sockets->Listen(socket_, SOMAXCONN) WIN(== SOCKET_ERROR) NIX(< 0))
+	if (sockets->Listen(socket_, SOMAXCONN) < 0)
 		return status_ = Status::kErrSocketListening;
-
-	status_ = Status::kUp;
 
 	thread.addJob([this] { handlingAcceptLoop(); });
 	thread.addJob([this] { waitingDataLoop(); });
-	return status_;
+	return status_ = Status::kUp;
 }
 
 void Server::Server::stop()
@@ -348,6 +341,7 @@ void Server::Server::handlingAcceptLoop()
 		if (enableKeepAlive(clientSocket))
 		{
 			std::unique_ptr<Client> client(new Client(clientSocket, clientAddr));
+			client->sockets = sockets;
 			connect_handler_(*client);
 			client_work_mutex_.lock();
 			clients_.push_back(std::move(client));

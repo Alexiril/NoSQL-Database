@@ -27,6 +27,7 @@ namespace SocketTCP {
 			void* lpvInBuffer, u32 cbInBuffer, void* lpvOutBuffer,
 			u32 cbOutBuffer, u32* lpcbBytesReturned, OVERLAPPED* lpOverlapped,
 			LPWSAOVERLAPPED_COMPLETION_ROUTINE lpCompletionRoutine), (override));
+		MOCK_METHOD(i32, IOctlSocket, (Socket s, i32 cmd, u32* arpg), (override));
 #endif
 	};
 }

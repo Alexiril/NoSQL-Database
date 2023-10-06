@@ -188,26 +188,33 @@ namespace SocketTCP {
 			void* lpvInBuffer, u32 cbInBuffer, void* lpvOutBuffer,
 			u32 cbOutBuffer, u32* lpcbBytesReturned, OVERLAPPED* lpOverlapped,
 			LPWSAOVERLAPPED_COMPLETION_ROUTINE lpCompletionRoutine) = 0;
+
+		virtual i32 IOctlSocket(Socket s, i32 cmd, u32* argp) = 0;
 #endif
 	};
 
 	class SocketCalls : public ISocketCalls {
 	public:
-		Socket NewSocket(i32 af, i32 type, i32 proto);
-		i32 SetSockOptions(Socket s, i32 level, i32 opname, char * optval, u32 optsize);
-		i32 Connect(Socket s, SocketAddr_in& address);
-		i32 Close(Socket s);
-		i32 Shutdown(Socket s, i32 how);
-		RecvResult Recv(Socket s, DataBuffer* data, u64 bytesToRead, i32 flags);
-		RecvResult CheckRecv(Socket s, i32 answer);
-		i32 Send(Socket s, DataBuffer& data, i32 flags);
-		i32 Bind(Socket s, SocketAddr_in& address);
-		i32 Listen(Socket s, i32 backlog);
-		i32 SelectBeforeAccept(Socket s, fd_set* readfds, const timeval* timeout);
-		Socket Accept(Socket s, SocketAddr_in& addr);
+		Socket NewSocket(i32 af, i32 type, i32 proto) override;
+		i32 SetSockOptions(Socket s, i32 level, i32 opname, char * optval, u32 optsize) override;
+		i32 Connect(Socket s, SocketAddr_in& address) override;
+		i32 Close(Socket s) override;
+		i32 Shutdown(Socket s, i32 how) override;
+		RecvResult Recv(Socket s, DataBuffer* data, u64 bytesToRead, i32 flags) override;
+		RecvResult CheckRecv(Socket s, i32 answer) override;
+		i32 Send(Socket s, DataBuffer& data, i32 flags) override;
+		i32 Bind(Socket s, SocketAddr_in& address) override;
+		i32 Listen(Socket s, i32 backlog) override;
+		i32 SelectBeforeAccept(Socket s, fd_set* readfds, const timeval* timeout) override;
+		Socket Accept(Socket s, SocketAddr_in& addr) override;
 
 #ifdef _WIN32
-		i32 wsaioctl(Socket s, u32 dwIoControlCode, void* lpvInBuffer, u32 cbInBuffer, void* lpvOutBuffer, u32 cbOutBuffer, u32* lpcbBytesReturned, OVERLAPPED* lpOverlapped, LPWSAOVERLAPPED_COMPLETION_ROUTINE lpCompletionRoutine);
+		i32 wsaioctl(Socket s, u32 dwIoControlCode,
+			void* lpvInBuffer, u32 cbInBuffer, void* lpvOutBuffer,
+			u32 cbOutBuffer, u32* lpcbBytesReturned, OVERLAPPED* lpOverlapped,
+			LPWSAOVERLAPPED_COMPLETION_ROUTINE lpCompletionRoutine) override;
+
+		i32 IOctlSocket(Socket s, i32 cmd, u32* argp) override;
 #endif
 	};
 

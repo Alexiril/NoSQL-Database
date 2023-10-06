@@ -111,6 +111,7 @@
     <ClCompile Include="applicationclientTest.cpp" />
     <ClCompile Include="clientTest.cpp" />
     <ClCompile Include="requeststateTest.cpp" />
+    <ClCompile Include="serverTest.cpp" />
     <ClCompile Include="sharedTest.cpp" />
     <ClCompile Include="socketsTest.cpp" />
     <ClCompile Include="threadpoolTest.cpp" />
