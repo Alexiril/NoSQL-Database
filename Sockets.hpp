@@ -120,7 +120,7 @@ namespace SocketTCP {
 		}
 	};
 
-	static inline WinSocketInit kWinsockInit;
+	static inline WinSocketInit kWinsockInit{};
 
 	using SockLen_t = i32;
 	using SocketAddr_in = SOCKADDR_IN;
@@ -211,7 +211,13 @@ namespace SocketTCP {
 #endif
 	};
 
-	static ISocketCalls* sockets = new SocketCalls();
+	inline bool GetIPAddress(string value, i64& result) {
+		return inet_pton(AF_INET, value.c_str(), &result) == 1;
+	}
+
+	inline bool GetPort(string value, i64& result) {
+		return GetNumericValue(value, result, 0, 0xFFFF);
+	}
 }
 
 #endif // !SOCKETS_HPP

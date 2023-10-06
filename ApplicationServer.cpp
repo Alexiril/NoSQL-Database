@@ -1,11 +1,5 @@
 #include "ApplicationServer.hpp"
 
-i32 main()
-{
-    ApplicationServer().Run();
-    return 0;
-}
-
 ApplicationServer::ApplicationServer()
 {
     root_.reset(new Database::Object("database"));
@@ -19,76 +13,22 @@ ApplicationServer::~ApplicationServer()
 
 void ApplicationServer::Run()
 {
-    u32 ip_address_{ INADDR_ANY };
-    u16 port_{ 1111 };
-    u64 threadsAmount{ std::thread::hardware_concurrency() };
+    i64 ip_address { INADDR_ANY };
+    i64 port { 1111 };
+    i64 threadsAmount { std::thread::hardware_concurrency() };
 
     string value;
 
-    std::cout
-        << "\033[92mApplication started.\033[0m"
-        << std::endl
-        << "  \033[92mPlease, set the listening IPv4 address (none for any): \033[0m";
-    std::getline(std::cin, value);
-    StringExtension::Trim(value);
-    while (not value.empty())
-    {
-        try
-        {
-            inet_pton(AF_INET, value.c_str(), &ip_address_);
-            break;
-        }
-        catch (const std::exception& exception)
-        {
-            std::cout
-                << std::format("\033[91mSorry, it's not a correct IPv4 address: {}\033[0m", exception.what())
-                << std::endl
-                << "  \033[92mPlease, set the listening IPv4 address (none for any): \033[0m";
-        }
-        std::getline(std::cin, value);
-    }
-    std::cout << "  \033[92mPlease, set the listening port (none for standard): \033[0m";
-    std::getline(std::cin, value);
-    StringExtension::Trim(value);
-    while (not value.empty())
-    {
-        try
-        {
-            port_ = std::stoi(value);
-            break;
-        }
-        catch (const std::exception& exception)
-        {
-            std::cout
-                << std::format("\033[91mSorry, it's not a correct port: {}\033[0m", exception.what())
-                << std::endl
-                << "  \033[92mPlease, set the listening port (none for standard): \033[0m";
-        }
-        std::getline(std::cin, value);
-    }
-    std::cout << "  \033[92mPlease, set the threads amount (none for automatic): \033[0m";
-    std::getline(std::cin, value);
-    StringExtension::Trim(value);
-    while (not value.empty())
-    {
-        try
-        {
-            threadsAmount = std::stoi(value);
-            break;
-        }
-        catch (const std::exception& exception)
-        {
-            std::cout
-                << std::format("\033[91mSorry, it's not a correct number: {}\033[0m", exception.what())
-                << std::endl
-                << "  \033[92mPlease, set the threads amount (none for automatic): \033[0m";
-        }
-        std::getline(std::cin, value);
-    }
+    std::cout << "\033[92mApplication started.\033[0m" << std::endl;
+    
+    GetValue("listening IPv4 address", true, INADDR_ANY, &SocketTCP::GetIPAddress, ip_address);
+    GetValue("listening port", true, 1111, &SocketTCP::GetPort, port);
+    GetValue("threads amount", true, std::thread::hardware_concurrency(),
+        [](string value, i64& result) { return GetNumericValue(value, result, 1, 0xFFFF); }, threadsAmount);
 
     server_.reset(new SocketTCP::Server::Server(
-        ip_address_,
-        port_,
+        static_cast<i32>(ip_address),
+        static_cast<u16>(port),
         { 1, 1, 1 },
         [this](SocketTCP::DataBuffer data, SocketTCP::Server::Server::Client& client)
         {
@@ -123,7 +63,8 @@ void ApplicationServer::Run()
             client.sendData("\033[93mWelcome! Database is active.\033[0m\n");
         },
         [](SocketTCP::Server::Server::Client& client) {},
-        threadsAmount));
+        static_cast<u64>(threadsAmount))
+    );
 
     serverThread_ = std::jthread([&]()
         {
@@ -145,6 +86,14 @@ void ApplicationServer::Run()
             }
             server_.reset(); });
 
+    RunConsole();
+
+    server_->halt();
+    exit(0);
+}
+
+void ApplicationServer::RunConsole()
+{
     std::cout << "\033[92mDatabase server started.\033[0m" << std::endl;
     std::cout << "\033[96mSee 'help' for allowed commands.\033[0m" << std::endl;
 
@@ -172,18 +121,15 @@ void ApplicationServer::Run()
     }
 
     std::cout << "\033[93mHalting...\033[0m" << std::endl;
-
-    server_->halt();
-    exit(0);
 }
 
-bool ApplicationServer::HandleConsole(string& command)
+bool ApplicationServer::HandleConsole(string& input)
 {
-    StringExtension::Trim(command);
-    string serverCommand = command;
+    StringExtension::Trim(input);
+    string serverCommand = input;
     StringExtension::ToLower(serverCommand);
 
-    if (command.empty() or command.size() == 0 or command[0] == '#')
+    if (input.empty() or input.size() == 0 or input[0] == '#')
         return true;
 
     if (serverCommand == "exit" or serverCommand == "quit")
@@ -226,16 +172,16 @@ bool ApplicationServer::HandleConsole(string& command)
 
     if (serverCommand.find(' ') == string::npos and not root_->ContainsCommand(serverCommand))
     {
-        std::cout << std::format("\033[91mUnknown command: '{}'\033[0m", command) << std::endl;
+        std::cout << std::format("\033[91mUnknown command: '{}'\033[0m", input) << std::endl;
         return true;
     }
     else if (serverCommand.find(' ') != string::npos)
-        serverCommand = command.substr(0, command.find(' '));
+        serverCommand = input.substr(0, input.find(' '));
 
     if (root_->ContainsCommand(serverCommand))
     {
         std::cout << "\033[96m Requesting a database... It may take some time.\033[0m" << std::endl;
-        Database::RequestStateObject result = root_->HandleRequest(command);
+        Database::RequestStateObject result = root_->HandleRequest(input);
         std::cout << result.ColorizedMessage() << std::endl;
     }
 

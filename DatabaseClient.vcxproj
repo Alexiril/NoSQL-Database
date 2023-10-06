@@ -136,9 +136,11 @@
   <ItemGroup>
     <ClCompile Include="ApplicationClient.cpp" />
     <ClCompile Include="Client.cpp" />
+    <ClCompile Include="ClientMain.cpp" />
     <ClCompile Include="Sockets.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="ApplicationClient.hpp" />
     <ClInclude Include="Client.hpp" />
     <ClInclude Include="Shared.hpp" />
     <ClInclude Include="Sockets.hpp" />

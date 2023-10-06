@@ -13,6 +13,7 @@ public:
     ~ApplicationServer();
 
     void Run();
+    void RunConsole();
 
 private:
     std::shared_ptr<Database::Object> root_;

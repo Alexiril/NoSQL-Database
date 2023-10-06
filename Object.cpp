@@ -1,20 +1,20 @@
 #include "Object.hpp"
 
-void Database::Object::Clear()
+void Database::Object::ClearInternal()
 {
 	access_mutex_.lock();
 	std::map<string, std::shared_ptr<Object>> childrenCopy = children_;
 	children_.clear();
 	for (auto& kid : childrenCopy)
 	{
-		kid.second->Clear();
+		kid.second->ClearInternal();
 		kid.second.reset();
 	}
 	childrenCopy.clear();
 	access_mutex_.unlock();
 }
 
-string Database::Object::Get()
+string Database::Object::GetInternal()
 {
 	sstream result;
 	access_mutex_.lock();
@@ -27,7 +27,7 @@ string Database::Object::Get()
 	return result.str();
 }
 
-string Database::Object::Tree(u64 depth)
+string Database::Object::TreeInternal(u64 depth)
 {
 	sstream result;
 	access_mutex_.lock();
@@ -39,11 +39,11 @@ string Database::Object::Tree(u64 depth)
 		<< kid
 		<< ":"
 		<< std::endl
-		<< object->Tree(depth + 1);
+		<< object->TreeInternal(depth + 1);
 	return result.str();
 }
 
-string Database::Object::ExportBranch(const string& parent)
+string Database::Object::ExportInternal(const string& parent)
 {
 	sstream result;
 	access_mutex_.lock();
@@ -61,7 +61,7 @@ string Database::Object::ExportBranch(const string& parent)
 		result << kid << ",";
 	result << std::endl;
 	for (auto& [kid, object] : children_)
-		result << object->ExportBranch(std::format("{} {}", parent, kid));
+		result << object->ExportInternal(std::format("{} {}", parent, kid));
 	return result.str();
 }
 
@@ -82,25 +82,25 @@ Database::RequestStateObject Database::Object::HandleRequest(string& request)
 	{
 		string command = request.substr(0, spacePosition);
 		StringExtension::ToLower(command);
-		if (not operations().contains(command))
+		if (not kOperations.contains(command))
 			return RequestStateObject(
 				std::format("Incorrect request '{}'. Read 'help' for the list of accepted requests.\n", command),
 				RequestState::kWarning
 			);
 		std::vector<string> selector = StringExtension::SplitStd(request.substr(spacePosition + 1, UINT64_MAX));
 		auto timeStart = std::chrono::high_resolution_clock::now();
-		auto result = HandleSelector(command, selector);
+		auto result = HandleSelector(get<0>(kOperations.at(command)), selector);
 		auto timeFinish = std::chrono::high_resolution_clock::now();
 		std::chrono::duration<double, std::milli> milleseconds = timeFinish - timeStart;
 		result.message_ += std::format("\n\033[96mRequest took {} seconds.\033[0m\n", milleseconds.count() / 1000);
 		return result;
 	}
 
-	if (operations().contains(request))
+	if (kOperations.contains(request))
 	{
 		auto timeStart = std::chrono::high_resolution_clock::now();
 		auto empty = std::vector<string>();
-		auto result = HandleSelector(request, empty);
+		auto result = HandleSelector(get<0>(kOperations.at(request)), empty);
 		auto timeFinish = std::chrono::high_resolution_clock::now();
 		std::chrono::duration<double, std::milli> milleseconds = timeFinish - timeStart;
 		result.message_ += std::format("\n\033[96mRequest took {} seconds.\033[0m\n", milleseconds.count() / 1000);
@@ -112,9 +112,9 @@ Database::RequestStateObject Database::Object::HandleRequest(string& request)
 	{
 		sstream out;
 		out << "Avaliable requests:" << std::endl;
-		for (auto& [key, value] : operations())
+		for (auto& [key, value] : kOperations)
 			out << std::format("    {} - {}", key, get<1>(value)) << std::endl;
-		if (operations().size() == 0)
+		if (kOperations.size() == 0)
 			out << "    Actually, there's no requests. Sorry :)" << std::endl;
 		return RequestStateObject(out.str(), RequestState::kInfo);
 	}
@@ -127,7 +127,7 @@ Database::RequestStateObject Database::Object::HandleRequest(string& request)
 
 bool Database::Object::ContainsCommand(const string& command)
 {
-	return operations().contains(command);
+	return kOperations.contains(command);
 }
 
 void Database::Object::SetThisPtr(std::weak_ptr<Object> this_ptr)
@@ -135,7 +135,7 @@ void Database::Object::SetThisPtr(std::weak_ptr<Object> this_ptr)
 	this_ptr_ = this_ptr;
 }
 
-Database::RequestStateObject Database::Object::HandleSelector(string& function, std::vector<string>& selector)
+Database::RequestStateObject Database::Object::HandleSelector(const requestOperationType& function, std::vector<string>& selector)
 {
 	if (selector.size() <= 1)
 	{
@@ -158,14 +158,14 @@ Database::RequestStateObject Database::Object::HandleSelector(string& function, 
 	return result;
 }
 
-Database::RequestStateObject Database::Object::HandleComma(string& function, const std::vector<string>& commaObjects)
+Database::RequestStateObject Database::Object::HandleComma(const requestOperationType& function, const std::vector<string>& commaObjects)
 {
 	sstream result;
 	if (commaObjects.size() == 0)
-		return RequestStateObject(get<0>(operations()[function])("").ColorizedMessage() + "\n", RequestState::kNone);
+		return RequestStateObject(function(this, "").ColorizedMessage() + "\n", RequestState::kNone);
 	for (auto& operand : commaObjects)
 		if (not operand.empty() and operand != "database")
-			result << get<0>(operations()[function])(operand).ColorizedMessage() << std::endl;
+			result << function(this, operand).ColorizedMessage() << std::endl;
 		else if (operand == "database")
 			return RequestStateObject("You cannot name an object 'database'.", RequestState::kError);
 	return RequestStateObject(result.str(), RequestState::kNone);
@@ -177,22 +177,7 @@ Database::Object::Object(string name) : name_(name)
 
 Database::Object::~Object()
 {
-	Clear();
-}
-
-std::map<string, std::tuple<Database::Object::requestOperationType, string>> Database::Object::operations()
-{
-
-	return std::map<string, std::tuple<requestOperationType, string>>
-	{
-		std::make_pair("set", std::make_tuple([this](string value) { return Set(value); }, "set [selector] sets a value in the database.")),
-			std::make_pair("get", std::make_tuple([this](string value) { return Get(value); }, "get[selector] shows the values(children objects) of the object.")),
-			std::make_pair("tree", std::make_tuple([this](string value) { return Tree(value); }, "tree [selector] shows the entire object tree.")),
-			std::make_pair("export", std::make_tuple([this](string value) { return Export(value); }, "export [selector] prints requests corresponding the data in the database.")),
-			std::make_pair("check", std::make_tuple([this](string value) { return Check(value); }, "check [selector] checks if the object with the selector exists in the database now.")),
-			std::make_pair("remove", std::make_tuple([this](string value) { return Remove(value); }, "remove [selector] deletes the object from the database.")),
-			std::make_pair("clear", std::make_tuple([this](string value) { return Clear(value); }, "clear [selector] removes each child object from the selected object."))
-	};
+	ClearInternal();
 }
 
 Database::RequestStateObject Database::Object::Set(string name)
@@ -214,29 +199,28 @@ Database::RequestStateObject Database::Object::Set(string name)
 Database::RequestStateObject Database::Object::Get(string name)
 {
 	if (name == "")
-		return RequestStateObject(Get(), RequestState::kOk);
+		return RequestStateObject(GetInternal(), RequestState::kOk);
 	if (not children_.contains(name))
 		return RequestStateObject(std::format("Object '{}' is not in the '{}'.", name, name_), RequestState::kError);
-	return RequestStateObject(children_[name]->Get(), RequestState::kOk);
+	return RequestStateObject(children_[name]->GetInternal(), RequestState::kOk);
 }
 
 Database::RequestStateObject Database::Object::Tree(string name)
 {
 	if (name == "")
-		return RequestStateObject(Tree(0), RequestState::kOk);
+		return RequestStateObject(TreeInternal(0), RequestState::kOk);
 	if (not children_.contains(name))
 		return RequestStateObject(std::format("Object '{}' is not in the '{}'.", name, name_), RequestState::kError);
-	return RequestStateObject(std::format("{}:\n{}", name, children_[name]->Tree(1)), RequestState::kOk);
+	return RequestStateObject(std::format("{}:\n{}", name, children_[name]->TreeInternal(1)), RequestState::kOk);
 }
 
 Database::RequestStateObject Database::Object::Export(string name)
 {
-	// database export set database Alex 19,good,
 	if (name == "")
-		return RequestStateObject(ExportBranch(name_), RequestState::kOk);
+		return RequestStateObject(ExportInternal(""), RequestState::kOk);
 	if (not children_.contains(name))
 		return RequestStateObject(std::format("Object '{}' is not in the '{}'.", name, name_), RequestState::kError);
-	return RequestStateObject(std::format("set {}\n{}", name, children_[name]->ExportBranch(name)), RequestState::kOk);
+	return RequestStateObject(std::format("set {}\n{}", name, children_[name]->ExportInternal(name)), RequestState::kOk);
 }
 
 Database::RequestStateObject Database::Object::Check(string name)
@@ -257,7 +241,7 @@ Database::RequestStateObject Database::Object::Remove(string name)
 	auto& kid = children_[name];
 	kid->access_mutex_.lock();
 	kid->Wait();
-	kid->Clear();
+	kid->ClearInternal();
 	kid->access_mutex_.unlock();
 	kid.reset();
 	children_.erase(name);
@@ -271,7 +255,7 @@ Database::RequestStateObject Database::Object::Clear(string name)
 		anchors_.fetch_add(-1);
 		Wait();
 		anchors_.fetch_add(1);
-		Clear();
+		ClearInternal();
 		return RequestStateObject("Database was successfully cleared.", RequestState::kOk);
 	}
 	if (not children_.contains(name))
@@ -279,7 +263,7 @@ Database::RequestStateObject Database::Object::Clear(string name)
 	auto& kid = children_[name];
 	kid->access_mutex_.lock();
 	kid->Wait();
-	kid->Clear();
+	kid->ClearInternal();
 	kid->access_mutex_.unlock();
 	return RequestStateObject(std::format("Object '{}' was successfully cleared.", name), RequestState::kOk);
 }

@@ -8,13 +8,12 @@ void SocketTCP::Client::Client::handle()
 	{
 		while (status_ == ClientSocketStatus::kConnected)
 		{
-			if (DataBuffer data = loadData(); !data.empty())
+			DataBuffer data = loadData();
+			if (not data.empty())
 			{
 				std::scoped_lock lock(handle_mutex_);
 				handler_(std::move(data));
 			}
-			else if (status_ != ClientSocketStatus::kConnected)
-				return;
 		}
 	}
 	catch (std::exception &exception)
@@ -23,7 +22,6 @@ void SocketTCP::Client::Client::handle()
 			<< std::format("\033[91mSome unexpected exception has happened:\n{}\n\033[0m", exception.what())
 			<< "\033[93mPlease, contact the developer about this issue.\033[0m"
 			<< std::endl;
-		return;
 	}
 }
 
@@ -38,7 +36,6 @@ Client::Client::Client() noexcept : status_(ClientSocketStatus::kDisconnected),
 Client::Client::~Client()
 {
 	disconnect();
-	WIN(WSACleanup();)
 }
 
 ClientSocketStatus SocketTCP::Client::Client::connectTo(u32 host, u16 port) noexcept
@@ -94,15 +91,13 @@ DataBuffer SocketTCP::Client::Client::loadData()
 		return DataBuffer();
 
 	DataBuffer result;
-	DataBuffer sizeBuffer;
+	DataBuffer sizeBuffer = {0, 0, 0, 0, 0, 0, 0, 0};
 	u64 size = 0;
 
 	RecvResult check = sockets->Recv(socket_, &sizeBuffer, sizeof(size), NIX(MSG_DONTWAIT) WIN(0));
 
 	switch (check)
 	{
-	case SocketTCP::RecvResult::kOk:
-		break;
 	case SocketTCP::RecvResult::kAgain:
 		return DataBuffer();
 	case SocketTCP::RecvResult::kDisconnect:
@@ -114,15 +109,13 @@ DataBuffer SocketTCP::Client::Client::loadData()
 
 	size = *reinterpret_cast<u64*>(sizeBuffer.data());
 
-	if (!size)
+	if (size == 0)
 		return DataBuffer();
 
 	check = sockets->Recv(socket_, &result, size, NIX(MSG_DONTWAIT) WIN(0));
 
 	switch (check)
 	{
-	case SocketTCP::RecvResult::kOk:
-		break;
 	case SocketTCP::RecvResult::kAgain:
 		return DataBuffer();
 	case SocketTCP::RecvResult::kDisconnect:
@@ -135,11 +128,12 @@ DataBuffer SocketTCP::Client::Client::loadData()
 	return result;
 }
 
-void SocketTCP::Client::Client::setHandler(HandlerFunctionType handler)
+bool SocketTCP::Client::Client::setHandler(HandlerFunctionType handler)
 {
 	std::scoped_lock lock(handle_mutex_);
 	handler_ = handler;
 	thread = std::jthread(&Client::handle, this);
+	return true;
 }
 
 void SocketTCP::Client::Client::joinHandler()

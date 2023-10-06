@@ -37,11 +37,13 @@ namespace SocketTCP
             ClientSocketStatus getStatus() const { return status_; }
 
             DataBuffer loadData();
-            void setHandler(HandlerFunctionType handler);
+            bool setHandler(HandlerFunctionType handler);
             void joinHandler();
 
             bool sendData(const string& data) const;
             SocketType getType() const { return SocketType::kClientSocket; }
+
+            ISocketCalls* sockets = new SocketCalls();
         };
     }
 }

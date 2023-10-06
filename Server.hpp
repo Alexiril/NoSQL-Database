@@ -57,7 +57,7 @@ namespace SocketTCP
             void waitingDataLoop();
 
         public:
-            Server(const u32 ip_address_, const u16 port_,
+            Server(const i32 ip_address_, const u16 port_,
                 KeepAliveConfig conf = {},
                 HandlerFunctionType handler = default_data_handler_,
                 ConnectionHandlerFunctionType connect_handler_ = default_connection_handler_,
@@ -88,6 +88,8 @@ namespace SocketTCP
             void disconnectAll();
 
             string explainStatus();
+
+            ISocketCalls* sockets = new SocketCalls();
         };
 
         struct Server::Client
@@ -112,6 +114,8 @@ namespace SocketTCP
             DataBuffer loadData();
             bool sendData(const string& data) const;
             SocketType getType() const { return SocketType::kServerSocket; }
+
+            ISocketCalls* sockets = new SocketCalls();
         };
 
         string getHostStr(const Server::Client& client);

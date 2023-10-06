@@ -94,7 +94,7 @@ Server::Server::Client::~Client()
 u32 Server::Server::Client::getHost() const { return address_.sin_addr.s_addr; }
 u16 Server::Server::Client::getPort() const { return address_.sin_port; }
 
-Server::Server::Server(const u32 ip_address, const u16 port,
+Server::Server::Server(const i32 ip_address, const u16 port,
 					   KeepAliveConfig conf,
 					   HandlerFunctionType handler,
 					   ConnectionHandlerFunctionType connect_handler_,

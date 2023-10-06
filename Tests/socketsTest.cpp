@@ -6,6 +6,8 @@
 
 namespace SocketTCP {
 
+	static ISocketCalls* sockets = new SocketCalls();
+
 	class SocketCallsTest : public ::testing::Test {
 	public:
 		SocketCalls calls;

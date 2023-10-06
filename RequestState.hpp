@@ -45,7 +45,7 @@ namespace Database
 				result << "\033[96m";
 			result << message_;
 			if (state_ != RequestState::kNone)
-				result << " \033[0m";
+				result << "\033[0m";
 			return result.str();
 		}
 	};

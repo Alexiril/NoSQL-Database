@@ -108,7 +108,9 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="applicationclientTest.cpp" />
     <ClCompile Include="clientTest.cpp" />
+    <ClCompile Include="requeststateTest.cpp" />
     <ClCompile Include="sharedTest.cpp" />
     <ClCompile Include="socketsTest.cpp" />
     <ClCompile Include="threadpoolTest.cpp" />
@@ -123,6 +125,9 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="socketCallsMock.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -17,6 +17,16 @@ namespace Shared {
 		ASSERT_EQ(sizeof(u64), 8);
 		ASSERT_EQ(sizeof(i64), 8);
 	}
+
+	TEST(GetNumericValue, StandardUsing) {
+		i64 test_value;
+		ASSERT_EQ(GetNumericValue("abc", test_value, 0, 10), false);
+		ASSERT_EQ(GetNumericValue("-1", test_value, 0, 10), false);
+		ASSERT_EQ(GetNumericValue("-1", test_value, -5, 0), true);
+		ASSERT_EQ(test_value, -1);
+		ASSERT_EQ(GetNumericValue("4095", test_value, 1000, 0x1000), true);
+		ASSERT_EQ(test_value, 0xFFF);
+	}
 }
 
 namespace StringExtension {

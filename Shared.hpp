@@ -97,4 +97,31 @@ namespace StringExtension {
 	}
 }
 
+inline void GetValue(const string& value, bool print_to_output, i64 default_value, std::function<bool(string, i64&)> handler, i64& outValue) {
+	string line;
+	while (true)
+	{
+		if (print_to_output)
+			std::cout << std::format("\033[95mSet {} (nothing for default): \033[0m", value);
+		std::getline(std::cin, line);
+		StringExtension::Trim(line);
+		if (line.empty())
+			outValue = default_value;
+		if (line.empty() or handler(line, outValue))
+			break;
+		else if (print_to_output)
+			std::cout << std::format("\033[91mSorry, it's not a correct {}\033[0m", value) << std::endl;
+	}
+}
+
+inline bool GetNumericValue(const string& value, i64& result, i64 min, i64 max) {
+	try {
+		result = std::stoll(value);
+		if (result > min and result < max)
+			return true;
+	}
+	catch (...) {}
+	return false;
+}
+
 #endif // !SHARED_HPP
