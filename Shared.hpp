@@ -97,13 +97,13 @@ namespace StringExtension {
 	}
 }
 
-inline void GetValue(const string& value, bool print_to_output, i64 default_value, std::function<bool(string, i64&)> handler, i64& outValue) {
+inline void GetValue(std::istream& in, const string& value, bool print_to_output, i64 default_value, std::function<bool(string, i64&)> handler, i64& outValue) {
 	string line;
 	while (true)
 	{
 		if (print_to_output)
 			std::cout << std::format("\033[95mSet {} (nothing for default): \033[0m", value);
-		std::getline(std::cin, line);
+		std::getline(in, line);
 		StringExtension::Trim(line);
 		if (line.empty())
 			outValue = default_value;

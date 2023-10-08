@@ -9,8 +9,8 @@ i32 main(i32 argc, char** argv)
 
 	if (console) std::cout << "\033[92mDatabase client :)\033[0m" << std::endl;
 
-	GetValue("server IPv4 address", console, 0x0100007F, &SocketTCP::GetIPAddress, server_ip_address);
-	GetValue("server port", console, 1111, &SocketTCP::GetPort, server_port);
+	GetValue(std::cin, "server IPv4 address", console, 0x0100007F, &SocketTCP::GetIPAddress, server_ip_address);
+	GetValue(std::cin, "server port", console, 1111, &SocketTCP::GetPort, server_port);
 
 	auto client = SocketTCP::Client::Client();
 	if (client.connectTo(static_cast<i32>(server_ip_address), static_cast<u16>(server_port)) == SocketTCP::ClientSocketStatus::kConnected &&

@@ -175,7 +175,7 @@ namespace SocketTCP {
 		virtual i32 Send(Socket s, DataBuffer& data, i32 flags) = 0;
 		virtual i32 Bind(Socket s, SocketAddr_in& address) = 0;
 		virtual i32 Listen(Socket s, i32 backlog) = 0;
-		virtual i32 SelectBeforeAccept(Socket s, fd_set* readfds, const timeval* timeout) = 0;
+		virtual i32 SelectBeforeAccept(Socket s, fd_set* readfds, timeval* timeout) = 0;
 		virtual Socket Accept(Socket s, SocketAddr_in& addr) = 0;
 		virtual void FdSet(Socket s, fd_set* set) = 0;
 		virtual bool FdIsSet(Socket s, fd_set* set) = 0;
@@ -202,7 +202,7 @@ namespace SocketTCP {
 		i32 Send(Socket s, DataBuffer& data, i32 flags) override;
 		i32 Bind(Socket s, SocketAddr_in& address) override;
 		i32 Listen(Socket s, i32 backlog) override;
-		i32 SelectBeforeAccept(Socket s, fd_set* readfds, const timeval* timeout) override;
+		i32 SelectBeforeAccept(Socket s, fd_set* readfds, timeval* timeout) override;
 		Socket Accept(Socket s, SocketAddr_in& addr) override;
 		void FdSet(Socket s, fd_set* set) override;
 		bool FdIsSet(Socket s, fd_set* set) override;

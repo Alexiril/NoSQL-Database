@@ -2,8 +2,7 @@
 
 using namespace SocketTCP;
 
-DataBuffer Server::Server::Client::loadData()
-{
+DataBuffer Server::Server::Client::loadData() {
 	DataBuffer result;
 	DataBuffer sizeBuffer = {0, 0, 0, 0, 0, 0, 0, 0};
 	u64 size = 0;
@@ -21,7 +20,7 @@ DataBuffer Server::Server::Client::loadData()
 		break;
 	}
 
-	size = *reinterpret_cast<u64*>(sizeBuffer.data());
+	size = *reinterpret_cast<u64 *>(sizeBuffer.data());
 
 	if (size == 0)
 		return DataBuffer();
@@ -42,8 +41,7 @@ DataBuffer Server::Server::Client::loadData()
 	return result;
 }
 
-void Server::Server::Client::disconnect()
-{
+void Server::Server::Client::disconnect() {
 	if (socket_ != WIN(INVALID_SOCKET) NIX(-1))
 	{
 		sockets->Shutdown(socket_, SD_BOTH);
@@ -53,8 +51,7 @@ void Server::Server::Client::disconnect()
 	disconnected_ = true;
 }
 
-bool Server::Server::Client::sendData(const string& data) const
-{
+bool Server::Server::Client::sendData(const string &data) const {
 	DataBuffer send_buffer = DataBuffer();
 	u64 size = data.size() + 1;
 	for (u64 i = 0; i < sizeof(u64); ++i)
@@ -73,8 +70,7 @@ bool Server::Server::Client::sendData(const string& data) const
 
 Server::Server::Client::Client(Socket socket) : socket_(socket) {}
 
-Server::Server::Client::~Client()
-{
+Server::Server::Client::~Client() {
 	if (socket_ != WIN(INVALID_SOCKET) NIX(-1))
 	{
 		sockets->Shutdown(socket_, SD_BOTH);
@@ -83,52 +79,47 @@ Server::Server::Client::~Client()
 }
 
 Server::Server::Server(const i32 ip_address, const u16 port,
-	KeepAliveConfig conf,
-	HandlerFunctionType handler,
-	ConnectionHandlerFunctionType connect_handler_,
-	ConnectionHandlerFunctionType disconnect_handler_,
-	u64 thread_count)
+					   KeepAliveConfig conf,
+					   HandlerFunctionType handler,
+					   ConnectionHandlerFunctionType connect_handler_,
+					   ConnectionHandlerFunctionType disconnect_handler_,
+					   u64 thread_count)
 	: ip_address_(ip_address),
-	port_(port),
-	handler(handler),
-	connect_handler_(connect_handler_),
-	disconnect_handler_(disconnect_handler_),
-	thread(thread_count),
-	ka_config(conf),
-	socket_(0),
-	timeout_(1)
+	  port_(port),
+	  handler(handler),
+	  connect_handler_(connect_handler_),
+	  disconnect_handler_(disconnect_handler_),
+	  thread(thread_count),
+	  ka_config(conf),
+	  socket_(0),
+	  timeout_(1)
 {
 }
 
-Server::Server::~Server()
-{
+Server::Server::~Server() {
 	if (status_ == Status::kUp)
 		stop();
 }
 
-void Server::Server::setHandler(Server::HandlerFunctionType handler)
-{
+void Server::Server::setHandler(Server::HandlerFunctionType handler) {
 	this->handler = handler;
 }
 
 u16 Server::Server::getPort() const { return port_; }
-u16 Server::Server::setPort(const u16 port)
-{
+u16 Server::Server::setPort(const u16 port) {
 	this->port_ = port;
 	start();
 	return port;
 }
 
 u32 Server::Server::getIpAddress() const { return ip_address_; }
-u32 Server::Server::setIpAddress(const u32 ip_address)
-{
+u32 Server::Server::setIpAddress(const u32 ip_address) {
 	this->ip_address_ = ip_address;
 	start();
 	return ip_address;
 }
 
-Server::Server::Status Server::Server::start()
-{
+Server::Server::Status Server::Server::start() {
 	if (status_ == Status::kUp)
 		stop();
 
@@ -144,17 +135,20 @@ Server::Server::Status Server::Server::start()
 
 #ifdef _WIN32
 	u32 timeout = timeout_ * 1000;
-	sockets->SetSockOptions(socket_, SOL_SOCKET, SO_RCVTIMEO, reinterpret_cast<char*>(&timeout), sizeof(timeout));
+	sockets->SetSockOptions(socket_, SOL_SOCKET, SO_RCVTIMEO, reinterpret_cast<char *>(&timeout), sizeof(timeout));
 
 	if (u32 mode = 0; sockets->IOctlSocket(socket_, FIONBIO, &mode) == SOCKET_ERROR)
 		return status_ = Status::kErrSocketInit;
 #else
-	struct timeval tv { timeout_, 0 };
-	sockets->SetSockOptions(socket_, SOL_SOCKET, SO_RCVTIMEO, reinterpret_cast<char*>(&tv), sizeof(tv));
+	struct timeval tv
+	{
+		timeout_, 0
+	};
+	sockets->SetSockOptions(socket_, SOL_SOCKET, SO_RCVTIMEO, reinterpret_cast<char *>(&tv), sizeof(tv));
 #endif
 
 	i32 flag = true;
-	if ((sockets->SetSockOptions(socket_, SOL_SOCKET, SO_REUSEADDR, WIN(reinterpret_cast<char*>)(&flag), sizeof(flag)) == -1) or
+	if ((sockets->SetSockOptions(socket_, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<char *>(&flag), sizeof(flag)) == -1) or
 		(sockets->Bind(socket_, address_) < 0))
 		return status_ = Status::kErrSocketBind;
 
@@ -162,13 +156,14 @@ Server::Server::Status Server::Server::start()
 		return status_ = Status::kErrSocketListening;
 
 	halts_ = false;
-	thread.addJob([this] { handlingAcceptLoop(); });
-	thread.addJob([this] { waitingDataLoop(); });
+	thread.addJob([this]
+				  { handlingAcceptLoop(); });
+	thread.addJob([this]
+				  { waitingDataLoop(); });
 	return status_ = Status::kUp;
 }
 
-void Server::Server::stop()
-{
+void Server::Server::stop() {
 	halt();
 	thread.dropUnstartedJobs();
 	status_ = Status::kClose;
@@ -178,22 +173,20 @@ void Server::Server::stop()
 	client_work_mutex_.unlock();
 }
 
-void Server::Server::joinLoop()
-{
+void Server::Server::joinLoop() {
 	thread.join();
 }
 
-void Server::Server::halt()
-{
+void Server::Server::halt() {
 	halts_ = true;
 	thread.halt();
 }
 
-string Server::Server::explainStatus()
-{
-	i32 lastError{ 0 };
+string Server::Server::explainStatus() {
+	i32 lastError{0};
 #ifdef _WIN32
-	if (status_ != Status::kUp and status_ != Status::kClose) {
+	if (status_ != Status::kUp and status_ != Status::kClose)
+	{
 		lastError = WSAGetLastError();
 	}
 #endif
@@ -212,9 +205,8 @@ string Server::Server::explainStatus()
 	}
 }
 
-void Server::Server::handlingAcceptLoop()
-{
-	timeval waiting_time_tv{ 0, 5000 };
+void Server::Server::handlingAcceptLoop() {
+	timeval waiting_time_tv{0, 5000};
 
 	fd_set master{};
 	FD_ZERO(&master);
@@ -245,20 +237,21 @@ void Server::Server::handlingAcceptLoop()
 	}
 
 	if (not halts_)
-		thread.addJob([this]() { handlingAcceptLoop(); });
+		thread.addJob([this]()
+					  { handlingAcceptLoop(); });
 }
 
-void Server::Server::waitingDataLoop()
-{
+void Server::Server::waitingDataLoop() {
 	DataBuffer data;
 	client_work_mutex_.lock();
 	ClientIterator iter = clients_.begin();
-	for (auto& client : clients_)
+	for (auto &client : clients_)
 	{
 		client->access_mutex_.lock();
 		if (not client->disconnected_ and not client->removed_)
 			data = client->loadData();
-		else data.clear();
+		else
+			data.clear();
 		if (!data.empty())
 		{
 			if (client->answered_)
@@ -268,7 +261,7 @@ void Server::Server::waitingDataLoop()
 			}
 			client->answered_ = true;
 			thread.addJob([this, data = std::move(data), &client]
-				{
+						  {
 					client_work_mutex_.lock();
 					if (client == nullptr)
 					{
@@ -279,22 +272,20 @@ void Server::Server::waitingDataLoop()
 					handler(data, *client);
 					client->answered_ = false;
 					client->access_mutex_.unlock();
-					client_work_mutex_.unlock();
-				});
+					client_work_mutex_.unlock(); });
 		}
 		else if (client->disconnected_ and not client->removed_)
 		{
 			client->removed_ = true;
 			thread.addJob([this, &client, iter]
-				{
+						  {
 					client_work_mutex_.lock();
 					client->access_mutex_.lock();
 					disconnect_handler_(*client);
 					client->access_mutex_.unlock();
 					client.reset();
 					clients_.erase(iter);
-					client_work_mutex_.unlock();
-				});
+					client_work_mutex_.unlock(); });
 		}
 		client->access_mutex_.unlock();
 		++iter;
@@ -302,27 +293,27 @@ void Server::Server::waitingDataLoop()
 	client_work_mutex_.unlock();
 
 	if (not halts_)
-		thread.addJob([this]() { waitingDataLoop(); });
+		thread.addJob([this]()
+					  { waitingDataLoop(); });
 }
 
-bool Server::Server::enableKeepAlive(Socket socket_)
-{
+bool Server::Server::enableKeepAlive(Socket socket_) {
 	i32 flag = 1;
 #ifdef _WIN32
-	tcp_keepalive ka{ 1, static_cast<u_long>(ka_config.idle) * 1000, static_cast<u_long>(ka_config.intvl) * 1000 };
-	if (sockets->SetSockOptions(socket_, SOL_SOCKET, SO_KEEPALIVE, reinterpret_cast<char*>(&flag), sizeof(flag)) != 0)
+	tcp_keepalive ka{1, static_cast<u_long>(ka_config.idle) * 1000, static_cast<u_long>(ka_config.intvl) * 1000};
+	if (sockets->SetSockOptions(socket_, SOL_SOCKET, SO_KEEPALIVE, reinterpret_cast<char *>(&flag), sizeof(flag)) != 0)
 		return false;
 	u32 numBytesReturned = 0;
 	if (sockets->wsaioctl(socket_, SIO_KEEPALIVE_VALS, &ka, sizeof(ka), nullptr, 0, &numBytesReturned, 0, nullptr) != 0)
 		return false;
 #else
-	if (sockets->SetSockOptions(socket_, SOL_SOCKET, SO_KEEPALIVE, &flag, sizeof(flag)) == -1)
+	if (sockets->SetSockOptions(socket_, SOL_SOCKET, SO_KEEPALIVE, reinterpret_cast<char *>(&flag), sizeof(flag)) == -1)
 		return false;
-	if (sockets->SetSockOptions(socket_, IPPROTO_TCP, TCP_KEEPIDLE, &ka_config.idle, sizeof(ka_config.idle)) == -1)
+	if (sockets->SetSockOptions(socket_, IPPROTO_TCP, TCP_KEEPIDLE, reinterpret_cast<char *>(&ka_config.idle), sizeof(ka_config.idle)) == -1)
 		return false;
-	if (sockets->SetSockOptions(socket_, IPPROTO_TCP, TCP_KEEPINTVL, &ka_config.intvl, sizeof(ka_config.intvl)) == -1)
+	if (sockets->SetSockOptions(socket_, IPPROTO_TCP, TCP_KEEPINTVL, reinterpret_cast<char *>(&ka_config.intvl), sizeof(ka_config.intvl)) == -1)
 		return false;
-	if (sockets->SetSockOptions(socket_, IPPROTO_TCP, TCP_KEEPCNT, &ka_config.cnt, sizeof(ka_config.cnt)) == -1)
+	if (sockets->SetSockOptions(socket_, IPPROTO_TCP, TCP_KEEPCNT, reinterpret_cast<char *>(&ka_config.cnt), sizeof(ka_config.cnt)) == -1)
 		return false;
 #endif
 	return true;

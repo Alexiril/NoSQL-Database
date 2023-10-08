@@ -18,8 +18,17 @@ namespace Shared {
 		ASSERT_EQ(sizeof(i64), 8);
 	}
 
+	TEST(GetValue, StandardUsing) {
+		i64 test_value{ 0 };
+		std::istringstream input("10\n0\n\n");
+		ASSERT_NO_THROW(GetValue(input, "", true, 0, [](string s, i64& a) { a = 10; return true; }, test_value));
+		ASSERT_EQ(test_value, 10);
+		ASSERT_NO_THROW(GetValue(input, "", true, 20, [](string s, i64& a) { return s == "0" ? false : true; }, test_value));
+		ASSERT_EQ(test_value, 20);
+	}
+
 	TEST(GetNumericValue, StandardUsing) {
-		i64 test_value;
+		i64 test_value{ 0 };
 		ASSERT_EQ(GetNumericValue("abc", test_value, 0, 10), false);
 		ASSERT_EQ(GetNumericValue("-1", test_value, 0, 10), false);
 		ASSERT_EQ(GetNumericValue("-1", test_value, -5, 0), true);
@@ -45,9 +54,9 @@ namespace StringExtension {
 
 		for (const auto& [key, value] : variants)
 		{
-			string value = key;
-			StringExtension::LeftTrim(value);
-			ASSERT_EQ(value, value);
+			string k = key;
+			StringExtension::LeftTrim(k);
+			ASSERT_EQ(k, value);
 		}
 	}
 
@@ -55,14 +64,14 @@ namespace StringExtension {
 		std::map<string, string> variants = {
 			{"\n .a", ".a"},
 			{"\t\v\f  \rabc;\t", "abc;\t"},
-			{"\0 abc \n", "abc \n"}
+			{"\t abc \n", "abc \n"}
 		};
 
 		for (const auto& [key, value] : variants)
 		{
-			string value = key;
-			StringExtension::LeftTrim(value);
-			ASSERT_EQ(value, value);
+			string k = key;
+			StringExtension::LeftTrim(k);
+			ASSERT_EQ(k, value);
 		}
 	}
 
@@ -81,9 +90,9 @@ namespace StringExtension {
 
 		for (const auto& [key, value] : variants)
 		{
-			string value = key;
-			StringExtension::RightTrim(value);
-			ASSERT_EQ(value, value);
+			string k = key;
+			StringExtension::RightTrim(k);
+			ASSERT_EQ(k, value);
 		}
 	}
 
@@ -91,14 +100,14 @@ namespace StringExtension {
 		std::map<string, string> variants = {
 			{"\n .a \n", "\n .a"},
 			{"\n abc;\t\v\f  \r\t", "\n abc;"},
-			{"\0 abc \n", "\0 abc"}
+			{"\t abc \n", "\t abc"}
 		};
 
 		for (const auto& [key, value] : variants)
 		{
-			string value = key;
-			StringExtension::RightTrim(value);
-			ASSERT_EQ(value, value);
+			string k = key;
+			StringExtension::RightTrim(k);
+			ASSERT_EQ(k, value);
 		}
 	}
 
@@ -117,9 +126,9 @@ namespace StringExtension {
 
 		for (const auto& [key, value] : variants)
 		{
-			string value = key;
-			StringExtension::Trim(value);
-			ASSERT_EQ(value, value);
+			string k = key;
+			StringExtension::Trim(k);
+			ASSERT_EQ(k, value);
 		}
 	}
 
@@ -127,14 +136,14 @@ namespace StringExtension {
 		std::map<string, string> variants = {
 			{"\n .a \n", ".a"},
 			{"\n abc;\t\v\f  \r\t", "abc;"},
-			{"\0 abc \n", "abc"}
+			{"\n abc \n", "abc"}
 		};
 
 		for (const auto& [key, value] : variants)
 		{
-			string value = key;
-			StringExtension::Trim(value);
-			ASSERT_EQ(value, value);
+			string k = key;
+			StringExtension::Trim(k);
+			ASSERT_EQ(k, value);
 		}
 	}
 
@@ -153,9 +162,9 @@ namespace StringExtension {
 
 		for (const auto& [key, value] : variants)
 		{
-			string value = key;
-			StringExtension::ToLower(value);
-			ASSERT_EQ(value, value);
+			string k = key;
+			StringExtension::ToLower(k);
+			ASSERT_EQ(k, value);
 		}
 	}
 
@@ -163,14 +172,14 @@ namespace StringExtension {
 		std::map<string, string> variants = {
 			{"\n .ABCE987 \n", "\n .abce987 \n"},
 			{"\n ABC;\t\v\f  \r\t", "\n abc;\t\v\f  \r\t"},
-			{"\0 ZXP \n", "\0 zxp \n"}
+			{"\1 ZXP \n", "\1 zxp \n"}
 		};
 
 		for (const auto& [key, value] : variants)
 		{
-			string value = key;
-			StringExtension::ToLower(value);
-			ASSERT_EQ(value, value);
+			string k = key;
+			StringExtension::ToLower(k);
+			ASSERT_EQ(k, value);
 		}
 	}
 

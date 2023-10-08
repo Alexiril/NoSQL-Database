@@ -12,13 +12,14 @@ public:
     ApplicationServer();
     ~ApplicationServer();
 
-    void Run();
-    void RunConsole();
-
-private:
+    void Run(std::istream& in);
+    void RunConsole(std::istream& in);
+    
     std::shared_ptr<Database::Object> root_;
+
+protected:
     std::unique_ptr<SocketTCP::Server::Server> server_;
-    std::jthread serverThread_;
+    std::jthread server_thread_;
 
     bool HandleConsole(string& request);
 };

@@ -1,31 +1,30 @@
 #include "ApplicationServer.hpp"
 
+#ifdef _WIN32
+#include <io.h>
+#define isatty _isatty
+#define fileno _fileno
+#endif // _WIN32
+
 ApplicationServer::ApplicationServer()
 {
-    root_.reset(new Database::Object("database"));
-    root_->SetThisPtr(root_);
-}
+    bool console = isatty(fileno(stdin));
 
-ApplicationServer::~ApplicationServer()
-{
-    root_.reset();
-}
-
-void ApplicationServer::Run()
-{
-    i64 ip_address { INADDR_ANY };
-    i64 port { 1111 };
-    i64 threadsAmount { std::thread::hardware_concurrency() };
-
-    string value;
+    i64 ip_address{ INADDR_ANY };
+    i64 port{ 1111 };
+    i64 threads_amount{ std::thread::hardware_concurrency() };
 
     std::cout << "\033[92mApplication started.\033[0m" << std::endl;
-    
-    GetValue("listening IPv4 address", true, INADDR_ANY, &SocketTCP::GetIPAddress, ip_address);
-    GetValue("listening port", true, 1111, &SocketTCP::GetPort, port);
-    GetValue("threads amount", true, std::thread::hardware_concurrency(),
-        [](string value, i64& result) { return GetNumericValue(value, result, 1, 0xFFFF); }, threadsAmount);
 
+    std::istringstream stdinput("\n\n\n");
+
+    GetValue(console ? std::cin : stdinput, "listening IPv4 address", true, INADDR_ANY, &SocketTCP::GetIPAddress, ip_address);
+    GetValue(console ? std::cin : stdinput, "listening port", true, 1111, &SocketTCP::GetPort, port);
+    GetValue(console ? std::cin : stdinput, "threads amount", true, std::thread::hardware_concurrency(),
+        [](string value, i64& result) { return GetNumericValue(value, result, 1, 0xFFFF); }, threads_amount);
+
+    root_.reset(new Database::Object("database"));
+    root_->SetThisPtr(root_);
     server_.reset(new SocketTCP::Server::Server(
         static_cast<i32>(ip_address),
         static_cast<u16>(port),
@@ -63,10 +62,18 @@ void ApplicationServer::Run()
             client.sendData("\033[93mWelcome! Database is active.\033[0m\n");
         },
         [](SocketTCP::Server::Server::Client& client) {},
-        static_cast<u64>(threadsAmount))
+        static_cast<u64>(threads_amount))
     );
+}
 
-    serverThread_ = std::jthread([&]()
+ApplicationServer::~ApplicationServer()
+{
+    root_.reset();
+}
+
+void ApplicationServer::Run(std::istream& in)
+{
+    server_thread_ = std::jthread([&]()
         {
             try {
                 if (server_->start() == SocketTCP::Server::Server::Status::kUp)
@@ -86,13 +93,14 @@ void ApplicationServer::Run()
             }
             server_.reset(); });
 
-    RunConsole();
+    RunConsole(in);
 
     server_->halt();
-    exit(0);
+    server_thread_.join();
+    //exit(0);
 }
 
-void ApplicationServer::RunConsole()
+void ApplicationServer::RunConsole(std::istream& in)
 {
     std::cout << "\033[92mDatabase server started.\033[0m" << std::endl;
     std::cout << "\033[96mSee 'help' for allowed commands.\033[0m" << std::endl;
@@ -116,7 +124,7 @@ void ApplicationServer::RunConsole()
         if (state_)
         {
             std::cout << "\033[95m>>\033[0m ";
-            std::getline(std::cin, input);
+            std::getline(in, input);
         }
     }
 

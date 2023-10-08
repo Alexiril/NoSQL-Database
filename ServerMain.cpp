@@ -2,6 +2,6 @@
 
 i32 main(i32 argc, char** argv)
 {
-    ApplicationServer().Run();
+    ApplicationServer().Run(std::cin);
     return 0;
 }
