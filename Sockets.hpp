@@ -149,11 +149,6 @@ namespace SocketTCP {
 		kDisconnect
 	};
 
-	enum class SocketType : u8 {
-		kClientSocket = 0,
-		kServerSocket = 1
-	};
-
 	inline string U32ToIpAddress(u32 ip)
 	{
 		if (ip == 0)
@@ -182,6 +177,8 @@ namespace SocketTCP {
 		virtual i32 Listen(Socket s, i32 backlog) = 0;
 		virtual i32 SelectBeforeAccept(Socket s, fd_set* readfds, const timeval* timeout) = 0;
 		virtual Socket Accept(Socket s, SocketAddr_in& addr) = 0;
+		virtual void FdSet(Socket s, fd_set* set) = 0;
+		virtual bool FdIsSet(Socket s, fd_set* set) = 0;
 
 #ifdef _WIN32
 		virtual i32 wsaioctl(Socket s, u32 dwIoControlCode,
@@ -207,6 +204,8 @@ namespace SocketTCP {
 		i32 Listen(Socket s, i32 backlog) override;
 		i32 SelectBeforeAccept(Socket s, fd_set* readfds, const timeval* timeout) override;
 		Socket Accept(Socket s, SocketAddr_in& addr) override;
+		void FdSet(Socket s, fd_set* set) override;
+		bool FdIsSet(Socket s, fd_set* set) override;
 
 #ifdef _WIN32
 		i32 wsaioctl(Socket s, u32 dwIoControlCode,

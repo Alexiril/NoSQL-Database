@@ -6,13 +6,13 @@
 
 namespace Database
 {
-	enum class RequestState
+	enum class RequestState : u8
 	{
 		kNone,
 		kOk,
+		kInfo,
 		kWarning,
-		kError,
-		kInfo
+		kError
 	};
 
 	class RequestStateObject

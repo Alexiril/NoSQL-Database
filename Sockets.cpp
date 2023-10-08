@@ -119,3 +119,11 @@ RecvResult SocketTCP::SocketCalls::Recv(Socket s, DataBuffer* data, u64 bytesToR
 
 		return result;
 }
+
+void SocketTCP::SocketCalls::FdSet(Socket s, fd_set* set) {
+	FD_SET(s, set);
+}
+
+bool SocketTCP::SocketCalls::FdIsSet(Socket s, fd_set* set) {
+	return FD_ISSET(s, set);
+}

@@ -170,7 +170,7 @@ bool ApplicationServer::HandleConsole(string& input)
         return true;
     }
 
-    if (serverCommand.find(' ') == string::npos and not root_->ContainsCommand(serverCommand))
+    if (serverCommand.find(' ') == string::npos and not Database::kOperations.contains(serverCommand))
     {
         std::cout << std::format("\033[91mUnknown command: '{}'\033[0m", input) << std::endl;
         return true;
@@ -178,7 +178,7 @@ bool ApplicationServer::HandleConsole(string& input)
     else if (serverCommand.find(' ') != string::npos)
         serverCommand = input.substr(0, input.find(' '));
 
-    if (root_->ContainsCommand(serverCommand))
+    if (Database::kOperations.contains(serverCommand))
     {
         std::cout << "\033[96m Requesting a database... It may take some time.\033[0m" << std::endl;
         Database::RequestStateObject result = root_->HandleRequest(input);

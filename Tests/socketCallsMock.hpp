@@ -21,6 +21,8 @@ namespace SocketTCP {
 		MOCK_METHOD(i32, Listen, (Socket s, i32 backlog), (override));
 		MOCK_METHOD(i32, SelectBeforeAccept, (Socket s, fd_set* readfds, const timeval* timeout), (override));
 		MOCK_METHOD(Socket, Accept, (Socket s, SocketAddr_in& addr), (override));
+		MOCK_METHOD(void, FdSet, (Socket s, fd_set* set), (override));
+		MOCK_METHOD(bool, FdIsSet, (Socket s, fd_set* set), (override));
 
 #ifdef _WIN32
 		MOCK_METHOD(i32, wsaioctl, (Socket s, u32 dwIoControlCode,

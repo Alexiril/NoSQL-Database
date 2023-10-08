@@ -41,7 +41,6 @@ namespace SocketTCP
             void joinHandler();
 
             bool sendData(const string& data) const;
-            SocketType getType() const { return SocketType::kClientSocket; }
 
             ISocketCalls* sockets = new SocketCalls();
         };

@@ -50,7 +50,6 @@ namespace SocketTCP {
 		}
 
 		TEST_F(ClientTest, CorrectProcess) {
-			ASSERT_EQ(client_->getType(), SocketType::kClientSocket);
 
 			DataBuffer sendBuffer = DataBuffer(256);
 
@@ -82,7 +81,7 @@ namespace SocketTCP {
 				WIN(closesocket)NIX(close)(actualSocket);
 		}
 
-		TEST_F(ClientTest, LoadDataIgnoreSize) {
+		TEST_F(ClientTest, LoadData) {
 			Socket actualSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
 			EXPECT_CALL(*socket_calls_mock_, NewSocket(AF_INET, SOCK_STREAM, IPPROTO_IP))
 				.Times(1).WillOnce(Return(actualSocket));

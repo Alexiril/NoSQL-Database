@@ -20,4 +20,8 @@ i32 main(i32 argc, char** argv)
 		client.joinHandler();
 	}
 	else std::cout << "\033[91mClient couldn't connect to the server.\033[0m" << std::endl;
+
+	std::cout
+		<< "\033[93mConnection halted.\033[0m" << std::endl
+		<< "\033[92mSee you next time.\033[0m" << std::endl;
 }

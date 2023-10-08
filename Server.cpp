@@ -4,19 +4,14 @@ using namespace SocketTCP;
 
 DataBuffer Server::Server::Client::loadData()
 {
-	if (status_ != ClientSocketStatus::kConnected)
-		return DataBuffer();
-
 	DataBuffer result;
-	DataBuffer sizeBuffer;
+	DataBuffer sizeBuffer = {0, 0, 0, 0, 0, 0, 0, 0};
 	u64 size = 0;
 
 	RecvResult check = sockets->Recv(socket_, &sizeBuffer, sizeof(size), NIX(MSG_DONTWAIT) WIN(0));
 
 	switch (check)
 	{
-	case SocketTCP::RecvResult::kOk:
-		break;
 	case SocketTCP::RecvResult::kAgain:
 		return DataBuffer();
 	case SocketTCP::RecvResult::kDisconnect:
@@ -28,15 +23,13 @@ DataBuffer Server::Server::Client::loadData()
 
 	size = *reinterpret_cast<u64*>(sizeBuffer.data());
 
-	if (!size)
+	if (size == 0)
 		return DataBuffer();
 
 	check = sockets->Recv(socket_, &result, size, NIX(MSG_DONTWAIT) WIN(0));
 
 	switch (check)
 	{
-	case SocketTCP::RecvResult::kOk:
-		break;
 	case SocketTCP::RecvResult::kAgain:
 		return DataBuffer();
 	case SocketTCP::RecvResult::kDisconnect:
@@ -49,22 +42,19 @@ DataBuffer Server::Server::Client::loadData()
 	return result;
 }
 
-ClientSocketStatus Server::Server::Client::disconnect()
+void Server::Server::Client::disconnect()
 {
-	status_ = ClientSocketStatus::kDisconnected;
-	if (socket_ == WIN(INVALID_SOCKET) NIX(-1))
-		return status_;
-	sockets->Shutdown(socket_, SD_BOTH);
-	sockets->Close(socket_);
-	socket_ = WIN(INVALID_SOCKET) NIX(-1);
-	return status_;
+	if (socket_ != WIN(INVALID_SOCKET) NIX(-1))
+	{
+		sockets->Shutdown(socket_, SD_BOTH);
+		sockets->Close(socket_);
+		socket_ = WIN(INVALID_SOCKET) NIX(-1);
+	}
+	disconnected_ = true;
 }
 
-bool Server::Server::Client::sendData(const string &data) const
+bool Server::Server::Client::sendData(const string& data) const
 {
-	if (status_ != ClientSocketStatus::kConnected)
-		return false;
-
 	DataBuffer send_buffer = DataBuffer();
 	u64 size = data.size() + 1;
 	for (u64 i = 0; i < sizeof(u64); ++i)
@@ -81,34 +71,32 @@ bool Server::Server::Client::sendData(const string &data) const
 	return true;
 }
 
-Server::Server::Client::Client(Socket socket, SocketAddr_in address) : address_(address), socket_(socket) {}
+Server::Server::Client::Client(Socket socket) : socket_(socket) {}
 
 Server::Server::Client::~Client()
 {
-	if (socket_ == WIN(INVALID_SOCKET) NIX(-1))
-		return;
-	sockets->Shutdown(socket_, SD_BOTH);
-	sockets->Close(socket_);
+	if (socket_ != WIN(INVALID_SOCKET) NIX(-1))
+	{
+		sockets->Shutdown(socket_, SD_BOTH);
+		sockets->Close(socket_);
+	}
 }
 
-u32 Server::Server::Client::getHost() const { return address_.sin_addr.s_addr; }
-u16 Server::Server::Client::getPort() const { return address_.sin_port; }
-
 Server::Server::Server(const i32 ip_address, const u16 port,
-					   KeepAliveConfig conf,
-					   HandlerFunctionType handler,
-					   ConnectionHandlerFunctionType connect_handler_,
-					   ConnectionHandlerFunctionType disconnect_handler_,
-					   u64 thread_count)
+	KeepAliveConfig conf,
+	HandlerFunctionType handler,
+	ConnectionHandlerFunctionType connect_handler_,
+	ConnectionHandlerFunctionType disconnect_handler_,
+	u64 thread_count)
 	: ip_address_(ip_address),
-	  port_(port),
-	  handler(handler),
-	  connect_handler_(connect_handler_),
-	  disconnect_handler_(disconnect_handler_),
-	  thread(thread_count),
-	  ka_config(conf),
-	  socket_(0),
-	  timeout_(1)
+	port_(port),
+	handler(handler),
+	connect_handler_(connect_handler_),
+	disconnect_handler_(disconnect_handler_),
+	thread(thread_count),
+	ka_config(conf),
+	socket_(0),
+	timeout_(1)
 {
 }
 
@@ -162,17 +150,18 @@ Server::Server::Status Server::Server::start()
 		return status_ = Status::kErrSocketInit;
 #else
 	struct timeval tv { timeout_, 0 };
-	sockets->SetSockOptions(socket_, SOL_SOCKET, SO_RCVTIMEO, reinterpret_cast<char *>(&tv), sizeof(tv));
+	sockets->SetSockOptions(socket_, SOL_SOCKET, SO_RCVTIMEO, reinterpret_cast<char*>(&tv), sizeof(tv));
 #endif
 
 	i32 flag = true;
-	if ((sockets->SetSockOptions(socket_, SOL_SOCKET, SO_REUSEADDR, WIN(reinterpret_cast<char *>)(&flag), sizeof(flag)) == -1) or
+	if ((sockets->SetSockOptions(socket_, SOL_SOCKET, SO_REUSEADDR, WIN(reinterpret_cast<char*>)(&flag), sizeof(flag)) == -1) or
 		(sockets->Bind(socket_, address_) < 0))
 		return status_ = Status::kErrSocketBind;
 
 	if (sockets->Listen(socket_, SOMAXCONN) < 0)
 		return status_ = Status::kErrSocketListening;
 
+	halts_ = false;
 	thread.addJob([this] { handlingAcceptLoop(); });
 	thread.addJob([this] { waitingDataLoop(); });
 	return status_ = Status::kUp;
@@ -180,6 +169,7 @@ Server::Server::Status Server::Server::start()
 
 void Server::Server::stop()
 {
+	halt();
 	thread.dropUnstartedJobs();
 	status_ = Status::kClose;
 	sockets->Close(socket_);
@@ -199,94 +189,14 @@ void Server::Server::halt()
 	thread.halt();
 }
 
-bool Server::Server::connectTo(u32 host, u16 port, ConnectionHandlerFunctionType connect_handler_)
-{
-	Socket clientSocket;
-	SocketAddr_in address_{};
-
-	clientSocket = sockets->NewSocket(AF_INET, SOCK_STREAM, IPPROTO_IP);
-
-	if (clientSocket WIN(== INVALID_SOCKET) NIX(< 0))
-		return false;
-
-	new (&address_) SocketAddr_in;
-	address_.sin_family = AF_INET;
-	address_.sin_addr.s_addr = host;
-	address_.sin_port = htons(port);
-
-	if (sockets->Connect(clientSocket, address_)
-			WIN(== SOCKET_ERROR) NIX(!= 0))
-	{
-		sockets->Close(clientSocket);
-		return false;
-	}
-
-	if (!enableKeepAlive(clientSocket))
-	{
-		sockets->Shutdown(clientSocket, 0);
-		sockets->Close(clientSocket);
-	}
-
-	std::unique_ptr<Client> client(new Client(clientSocket, address_));
-	connect_handler_(*client);
-	client_work_mutex_.lock();
-	clients_.push_back(std::move(client));
-	client_work_mutex_.unlock();
-	return true;
-}
-
-void Server::Server::sendData(const string &buffer)
-{
-	client_work_mutex_.lock();
-	for (auto &client : clients_)
-		client->sendData(buffer);
-	client_work_mutex_.unlock();
-}
-
-bool Server::Server::sendDataBy(u32 host, u16 port, const string &data)
-{
-	bool data_sent = false;
-	client_work_mutex_.lock();
-	for (auto &client : clients_)
-		if (client->getHost() == host && client->getPort() == port)
-		{
-			client->sendData(data);
-			data_sent = true;
-			break;
-		}
-	client_work_mutex_.unlock();
-	return data_sent;
-}
-
-bool Server::Server::disconnectBy(u32 host, u16 port)
-{
-	bool client_is_disconnected = false;
-	client_work_mutex_.lock();
-	for (auto &client : clients_)
-		if (client->getHost() == host && client->getPort() == port)
-		{
-			client->disconnect();
-			client_is_disconnected = true;
-			break;
-		}
-	client_work_mutex_.unlock();
-	return client_is_disconnected;
-}
-
-void Server::Server::disconnectAll()
-{
-	client_work_mutex_.lock();
-	for (auto &client : clients_)
-		client->disconnect();
-	client_work_mutex_.unlock();
-}
-
 string Server::Server::explainStatus()
 {
-	i32 lastError{0};
-	WIN(if (status_ != Status::kUp and status_ != Status::kClose) {
+	i32 lastError{ 0 };
+#ifdef _WIN32
+	if (status_ != Status::kUp and status_ != Status::kClose) {
 		lastError = WSAGetLastError();
-	})
+	}
+#endif
 	switch (status_)
 	{
 	case Server::Server::Status::kUp:
@@ -295,81 +205,61 @@ string Server::Server::explainStatus()
 		return std::format("Error: couldn't initialize a socket ({}).", lastError);
 	case Server::Server::Status::kErrSocketBind:
 		return std::format("Error: couldn't bind a socket ({}).", lastError);
-	case Server::Server::Status::kErrSocketKeepAlive:
-		return std::format("Error: couldn't keep a socket alive ({}).", lastError);
 	case Server::Server::Status::kErrSocketListening:
-		return std::format("Error: couldn't std::listen a socket ({}).", lastError);
-	case Server::Server::Status::kClose:
-		return "Socket is closed.";
+		return std::format("Error: couldn't listen a socket ({}).", lastError);
 	default:
-		return "Unknown state.";
+		return "Socket is closed.";
 	}
 }
 
 void Server::Server::handlingAcceptLoop()
 {
-	if (halts_)
-		return;
-	SocketAddr_in clientAddr{};
-	Socket clientSocket{};
-
-	timeval waiting_time_tv{0, 5000};
+	timeval waiting_time_tv{ 0, 5000 };
 
 	fd_set master{};
 	FD_ZERO(&master);
-	FD_SET(socket_, &master);
+	sockets->FdSet(socket_, &master);
 
 	fd_set temp = master;
-	if (sockets->SelectBeforeAccept(socket_, &temp, &waiting_time_tv) == -1)
+	if (sockets->SelectBeforeAccept(socket_, &temp, &waiting_time_tv) != -1 and sockets->FdIsSet(socket_, &temp))
 	{
-		if (status_ == Status::kUp and not halts_)
-			thread.addJob([this]() { handlingAcceptLoop(); });
-		return;
-	}
-
-	if (FD_ISSET(socket_, &temp))
-		clientSocket = sockets->Accept(socket_, clientAddr);
-	else if (status_ == Status::kUp and not halts_) {
-		thread.addJob([this]() { handlingAcceptLoop(); });
-		return;
-	}
-	else
-		return;
-
-	if (clientSocket WIN(!= 0) NIX(>= 0) && status_ == Status::kUp)
-	{
-		if (enableKeepAlive(clientSocket))
+		SocketAddr_in clientAddr{};
+		Socket clientSocket = sockets->Accept(socket_, clientAddr);
+		if (clientSocket WIN(!= 0) NIX(>= 0))
 		{
-			std::unique_ptr<Client> client(new Client(clientSocket, clientAddr));
-			client->sockets = sockets;
-			connect_handler_(*client);
-			client_work_mutex_.lock();
-			clients_.push_back(std::move(client));
-			client_work_mutex_.unlock();
-		}
-		else
-		{
-			sockets->Shutdown(clientSocket, 0);
-			sockets->Close(clientSocket);
+			if (enableKeepAlive(clientSocket))
+			{
+				std::unique_ptr<Client> client(new Client(clientSocket));
+				client->sockets = sockets;
+				connect_handler_(*client);
+				client_work_mutex_.lock();
+				clients_.push_back(std::move(client));
+				client_work_mutex_.unlock();
+			}
+			else
+			{
+				sockets->Shutdown(clientSocket, 0);
+				sockets->Close(clientSocket);
+			}
 		}
 	}
 
-	if (status_ == Status::kUp and not halts_)
+	if (not halts_)
 		thread.addJob([this]() { handlingAcceptLoop(); });
 }
 
 void Server::Server::waitingDataLoop()
 {
-	if (halts_)
-		return;
+	DataBuffer data;
 	client_work_mutex_.lock();
 	ClientIterator iter = clients_.begin();
-	for (auto &client : clients_)
+	for (auto& client : clients_)
 	{
-		if (not client)
-			continue;
 		client->access_mutex_.lock();
-		if (DataBuffer data = client->loadData(); !data.empty())
+		if (not client->disconnected_ and not client->removed_)
+			data = client->loadData();
+		else data.clear();
+		if (!data.empty())
 		{
 			if (client->answered_)
 			{
@@ -378,9 +268,9 @@ void Server::Server::waitingDataLoop()
 			}
 			client->answered_ = true;
 			thread.addJob([this, data = std::move(data), &client]
-						  {
+				{
 					client_work_mutex_.lock();
-					if (not client)
+					if (client == nullptr)
 					{
 						client_work_mutex_.unlock();
 						return;
@@ -389,31 +279,29 @@ void Server::Server::waitingDataLoop()
 					handler(data, *client);
 					client->answered_ = false;
 					client->access_mutex_.unlock();
-					client_work_mutex_.unlock(); });
+					client_work_mutex_.unlock();
+				});
 		}
-		else if (client->status_ == ClientSocketStatus::kDisconnected and not client->removed_)
+		else if (client->disconnected_ and not client->removed_)
 		{
 			client->removed_ = true;
 			thread.addJob([this, &client, iter]
-						  {
+				{
 					client_work_mutex_.lock();
-					if (not client)
-					{
-						client_work_mutex_.unlock();
-						return;
-					}
 					client->access_mutex_.lock();
 					disconnect_handler_(*client);
 					client->access_mutex_.unlock();
 					client.reset();
 					clients_.erase(iter);
-					client_work_mutex_.unlock(); });
+					client_work_mutex_.unlock();
+				});
 		}
 		client->access_mutex_.unlock();
 		++iter;
 	}
 	client_work_mutex_.unlock();
-	if (status_ == Status::kUp and not halts_)
+
+	if (not halts_)
 		thread.addJob([this]() { waitingDataLoop(); });
 }
 
@@ -421,8 +309,8 @@ bool Server::Server::enableKeepAlive(Socket socket_)
 {
 	i32 flag = 1;
 #ifdef _WIN32
-	tcp_keepalive ka{1, static_cast<u_long>(ka_config.idle) * 1000, static_cast<u_long>(ka_config.intvl) * 1000};
-	if (sockets->SetSockOptions(socket_, SOL_SOCKET, SO_KEEPALIVE, reinterpret_cast<char *>(&flag), sizeof(flag)) != 0)
+	tcp_keepalive ka{ 1, static_cast<u_long>(ka_config.idle) * 1000, static_cast<u_long>(ka_config.intvl) * 1000 };
+	if (sockets->SetSockOptions(socket_, SOL_SOCKET, SO_KEEPALIVE, reinterpret_cast<char*>(&flag), sizeof(flag)) != 0)
 		return false;
 	u32 numBytesReturned = 0;
 	if (sockets->wsaioctl(socket_, SIO_KEEPALIVE_VALS, &ka, sizeof(ka), nullptr, 0, &numBytesReturned, 0, nullptr) != 0)
@@ -438,9 +326,4 @@ bool Server::Server::enableKeepAlive(Socket socket_)
 		return false;
 #endif
 	return true;
-}
-
-string SocketTCP::Server::getHostStr(const Server::Client &client)
-{
-	return U32ToIpAddress(client.getHost()) + ':' + std::to_string(client.getPort());
 }

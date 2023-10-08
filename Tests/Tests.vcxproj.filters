@@ -24,6 +24,12 @@
     <ClCompile Include="serverTest.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="objectTest.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="applicationserverTest.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

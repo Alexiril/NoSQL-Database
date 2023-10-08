@@ -70,6 +70,12 @@ namespace SocketTCP {
 		ASSERT_THROW(WinSocketInit::CheckWSAStartup(1), std::runtime_error);
 	}
 
+	TEST(WinSocketInit, FullProcess) {
+		WinSocketInit* a = nullptr;
+		ASSERT_NO_THROW(a = new WinSocketInit());
+		ASSERT_NO_THROW(delete a);
+	}
+
 	TEST_F(SocketCallsTest, WSAIoctl) {
 		Socket socket = calls.NewSocket(AF_INET, SOCK_STREAM, IPPROTO_IP);
 
@@ -187,4 +193,12 @@ namespace SocketTCP {
 		EXPECT_EQ(calls.Recv(socket, &data, 10, 0), RecvResult::kDisconnect);
 		calls.Close(socket);
 	}
+
+	TEST_F(SocketCallsTest, FDSetIsset) {
+		auto s = socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
+		fd_set a{};
+		ASSERT_NO_THROW(calls.FdSet(s, &a));
+		ASSERT_NO_THROW(calls.FdIsSet(s, &a));
+	}
+
 }

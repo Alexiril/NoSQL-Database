@@ -31,7 +31,6 @@ namespace SocketTCP
                 kUp,
                 kErrSocketInit,
                 kErrSocketBind,
-                kErrSocketKeepAlive,
                 kErrSocketListening,
                 kClose
             };
@@ -51,10 +50,6 @@ namespace SocketTCP
             std::list<std::unique_ptr<Client>> clients_;
             mutex client_work_mutex_;
             u32 timeout_;
-
-            bool enableKeepAlive(Socket socket_);
-            void handlingAcceptLoop();
-            void waitingDataLoop();
 
         public:
             Server(const i32 ip_address_, const u16 port_,
@@ -81,15 +76,13 @@ namespace SocketTCP
             void joinLoop();
             void halt();
 
-            bool connectTo(u32 host, u16 port, ConnectionHandlerFunctionType connect_handler_);
-            void sendData(const string& data);
-            bool sendDataBy(u32 host, u16 port, const string& data);
-            bool disconnectBy(u32 host, u16 port);
-            void disconnectAll();
-
             string explainStatus();
 
             ISocketCalls* sockets = new SocketCalls();
+            
+            bool enableKeepAlive(Socket socket_);
+            void handlingAcceptLoop();
+            void waitingDataLoop();
         };
 
         struct Server::Client
@@ -97,28 +90,23 @@ namespace SocketTCP
             friend struct Server;
 
             mutex access_mutex_;
-            SocketAddr_in address_;
             Socket socket_;
-            ClientSocketStatus status_ = ClientSocketStatus::kConnected;
             std::atomic_bool answered_ = false;
             std::atomic_bool removed_ = false;
+            std::atomic_bool disconnected_ = false;
 
         public:
-            Client(Socket socket, SocketAddr_in address);
+            Client(Socket socket);
             ~Client();
-            u32 getHost() const;
-            u16 getPort() const;
-            ClientSocketStatus getStatus() const { return status_; }
-            ClientSocketStatus disconnect();
+            
+            void disconnect();
 
             DataBuffer loadData();
+
             bool sendData(const string& data) const;
-            SocketType getType() const { return SocketType::kServerSocket; }
 
             ISocketCalls* sockets = new SocketCalls();
         };
-
-        string getHostStr(const Server::Client& client);
     }
 }
 

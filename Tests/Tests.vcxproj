@@ -109,7 +109,9 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="applicationclientTest.cpp" />
+    <ClCompile Include="applicationserverTest.cpp" />
     <ClCompile Include="clientTest.cpp" />
+    <ClCompile Include="objectTest.cpp" />
     <ClCompile Include="requeststateTest.cpp" />
     <ClCompile Include="serverTest.cpp" />
     <ClCompile Include="sharedTest.cpp" />

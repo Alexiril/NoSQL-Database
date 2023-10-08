@@ -114,8 +114,6 @@ Database::RequestStateObject Database::Object::HandleRequest(string& request)
 		out << "Avaliable requests:" << std::endl;
 		for (auto& [key, value] : kOperations)
 			out << std::format("    {} - {}", key, get<1>(value)) << std::endl;
-		if (kOperations.size() == 0)
-			out << "    Actually, there's no requests. Sorry :)" << std::endl;
 		return RequestStateObject(out.str(), RequestState::kInfo);
 	}
 
@@ -123,11 +121,6 @@ Database::RequestStateObject Database::Object::HandleRequest(string& request)
 		std::format("Incorrect request '{}'. Read 'help' for the list of accepted requests.\n", request),
 		RequestState::kWarning
 	);
-}
-
-bool Database::Object::ContainsCommand(const string& command)
-{
-	return kOperations.contains(command);
 }
 
 void Database::Object::SetThisPtr(std::weak_ptr<Object> this_ptr)
@@ -162,13 +155,17 @@ Database::RequestStateObject Database::Object::HandleComma(const requestOperatio
 {
 	sstream result;
 	if (commaObjects.size() == 0)
-		return RequestStateObject(function(this, "").ColorizedMessage() + "\n", RequestState::kNone);
+		return function(this, "");
+	RequestState state = RequestState::kNone;
 	for (auto& operand : commaObjects)
-		if (not operand.empty() and operand != "database")
-			result << function(this, operand).ColorizedMessage() << std::endl;
-		else if (operand == "database")
-			return RequestStateObject("You cannot name an object 'database'.", RequestState::kError);
-	return RequestStateObject(result.str(), RequestState::kNone);
+		if (not operand.empty())
+		{
+			auto current = function(this, operand);
+			result << current.ColorizedMessage() << std::endl;
+			if (static_cast<u8>(current.state_) > static_cast<u8>(state))
+				state = current.state_;
+		}
+	return RequestStateObject(result.str(), state);
 }
 
 Database::Object::Object(string name) : name_(name)

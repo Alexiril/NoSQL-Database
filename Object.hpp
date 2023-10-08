@@ -9,7 +9,6 @@ namespace Database
 {
     class Object
     {
-
     private:
 
         void ClearInternal();
@@ -19,31 +18,29 @@ namespace Database
         void Wait();
 
     protected:
-        
         std::condition_variable_any waiting_;
-        std::atomic<u64>            anchors_ = 0;
-        rmutex			            access_mutex_;
-        rmutex					    waiting_mutex_;
-
+        
+        rmutex access_mutex_;
+        rmutex waiting_mutex_;
         string name_ = "";
 
         std::map<string, std::shared_ptr<Object>> children_{};
         std::weak_ptr<Object> parent_;
         std::weak_ptr<Object> this_ptr_;
 
-        RequestStateObject HandleSelector(const std::function<RequestStateObject(Object* object, string value)>& function, std::vector<string>& selector);
-        RequestStateObject HandleComma(const std::function<RequestStateObject(Object* object, string value)>& function, const std::vector<string>& commaObjects);
-
     public:
         
         using requestOperationType = std::function<RequestStateObject(Object* object, string value)>;
 
+        std::atomic<u64>            anchors_ = 0;
+        
         Object(string name);
         ~Object();
 
         RequestStateObject HandleRequest(string& request);
-        
-        bool ContainsCommand(const string& command);
+
+        RequestStateObject HandleSelector(const requestOperationType& function, std::vector<string>& selector);
+        RequestStateObject HandleComma(const requestOperationType& function, const std::vector<string>& commaObjects);
 
         void SetThisPtr(std::weak_ptr<Object> this_ptr);
 
@@ -54,6 +51,9 @@ namespace Database
         RequestStateObject Check(string name);
         RequestStateObject Remove(string name);
         RequestStateObject Clear(string name);
+
+        inline std::map<string, std::shared_ptr<Object>>& getChildren() { return children_; }
+        inline const string& getName() { return name_; }
     };
 
     static const std::map<string, std::tuple<Object::requestOperationType, string>> kOperations {

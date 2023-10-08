@@ -25,10 +25,7 @@ void HandleClient(SocketTCP::Client::Client& client, bool console, SocketTCP::Da
 		client.sendData(request);
 
 		if (request == "$dscn")
-		{
-			std::cout << "\033[92mSee you next time.\033[0m" << std::endl;
 			client.disconnect();
-		}
 	}
 	catch (const std::exception& exception)
 	{
